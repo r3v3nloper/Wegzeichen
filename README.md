@@ -135,3 +135,10 @@ für die PWA-Installation. Wer PNG-Varianten bevorzugt, legt `icon-192.png` und
 - [Docs/architecture.md](Docs/architecture.md) — Aufbau, Datenmodell, Entscheidungen
 - [Docs/features.md](Docs/features.md) — Funktionen im Detail
 - [CHANGELOG.md](CHANGELOG.md) — Änderungen
+
+## Lizenz
+
+[MIT](LICENSE) — © 2026 r3v3nloper. Die mitgelieferten Bibliotheken behalten ihre
+eigenen Lizenzen: Leaflet (BSD-2-Clause), marked (MIT), DOMPurify (MPL-2.0 oder
+Apache-2.0). Kartendaten kommen von OpenStreetMap und stehen unter der ODbL; die
+Namensnennung in der Karte ist Lizenzpflicht und darf nicht entfernt werden.
