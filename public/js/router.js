@@ -3,7 +3,7 @@
    View-Navigation und zentrales Daten-Laden pro View
    ===================================================== */
 import { S } from './state.js';
-import { $, esc, renderEmptyState, toast } from './dom.js';
+import { $, renderEmptyState, toast } from './dom.js';
 import { API } from './api.js';
 import { updateNav, closeSidebar } from './shell.js';
 import { renderHome, bindHome } from './views/home.js';
@@ -38,7 +38,7 @@ export async function navigate(view)
   catch (err)
   {
     main.innerHTML = renderEmptyState(
-      '⚠️', 'Fehler beim Laden', esc(err.message),
+      '⚠️', 'Fehler beim Laden', err.message,
       `<button class="btn btn-primary" data-nav="${view}">Nochmal versuchen</button>`
     );
   }

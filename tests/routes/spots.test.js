@@ -383,6 +383,50 @@ describe('Filtern', () =>
   });
 });
 
+describe('Favorit umschalten', () =>
+{
+  test('setzt das Kennzeichen und lässt die Kennzahlen unberührt', async () =>
+  {
+    const spot = (await create({
+      is_trail: true, name: 'Rheinsteig', length_km: 320, ascent_m: 8000,
+      difficulty: 'mittel', status: 'visited', rating: 4, visited_at: '2026-05-01',
+    })).data;
+
+    const res = await srv.req('PUT', `/api/spots/${spot.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.data.is_favorite, 1);
+    assert.equal(res.data.length_km, 320);
+    assert.equal(res.data.ascent_m, 8000);
+    assert.equal(res.data.difficulty, 'mittel');
+    assert.equal(res.data.rating, 4);
+    assert.equal(res.data.visited_at, '2026-05-01');
+  });
+
+  test('behält beide Aspekte eines Doppel-Ziels', async () =>
+  {
+    const spot = (await create({
+      is_trail: true, is_place: true, name: 'Drachenschlucht', category: 'Natur',
+    })).data;
+
+    const res = await srv.req('PUT', `/api/spots/${spot.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.data.is_trail, 1);
+    assert.equal(res.data.is_place, 1);
+    assert.equal(res.data.category, 'Natur');
+  });
+
+  test('antwortet für einen unbekannten Eintrag mit 404', async () =>
+  {
+    const res = await srv.req('PUT', '/api/spots/999999/favorite',
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 404);
+  });
+});
+
 describe('Löschen', () =>
 {
   test('entfernt den Eintrag', async () =>

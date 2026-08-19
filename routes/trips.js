@@ -1,11 +1,14 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
-const { findOwned } = require('../utils/ownership');
+const loadOwned = require('../middleware/owned');
+const { findOwned, setFavoriteOwned } = require('../utils/ownership');
 const v = require('../utils/validate');
 
 const router = express.Router();
 router.use(authMiddleware);
+
+const loadTrip = loadOwned('trips', 'Reise nicht gefunden');
 
 const MAX_TITLE = 200;
 const MAX_SUMMARY = 20000;
@@ -136,15 +139,9 @@ router.get('/', (req, res) =>
 });
 
 /* ── GET /api/trips/:id ───────────────────────────────────────────────────── */
-router.get('/:id', (req, res) =>
+router.get('/:id', loadTrip, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const trip = id === null ? null : findOwned('trips', id, req.userId);
-  if (!trip)
-  {
-    return res.status(404).json({ error: 'Reise nicht gefunden' });
-  }
-  res.json({ ...trip, stages: stagesFor(id, req.userId) });
+  res.json({ ...req.entity, stages: stagesFor(req.entity.id, req.userId) });
 });
 
 /* ── POST /api/trips ──────────────────────────────────────────────────────── */
@@ -169,15 +166,9 @@ router.post('/', (req, res) =>
 
 /* ── PUT /api/trips/:id ──
    Fehlt `stages` im Body, bleiben die bestehenden Etappen unberührt. */
-router.put('/:id', (req, res) =>
+router.put('/:id', loadTrip, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const existing = id === null ? null : findOwned('trips', id, req.userId);
-  if (!existing)
-  {
-    return res.status(404).json({ error: 'Reise nicht gefunden' });
-  }
-
+  const id = req.entity.id;
   const data = readTrip(req.body);
   const stages = readStages(req.body.stages, req.userId);
 
@@ -195,18 +186,23 @@ router.put('/:id', (req, res) =>
   res.json({ ...findOwned('trips', id, req.userId), stages: stagesFor(id, req.userId) });
 });
 
+/* ── PUT /api/trips/:id/favorite ──
+   Nur das Kennzeichen. Die Etappen bleiben dadurch garantiert unberührt —
+   vorher musste das Frontend sie beim Umschalten bewusst weglassen. */
+router.put('/:id/favorite', loadTrip, (req, res) =>
+{
+  setFavoriteOwned('trips', req.entity.id, req.userId, v.boolFlag(req.body.is_favorite));
+  res.json({
+    ...findOwned('trips', req.entity.id, req.userId),
+    stages: stagesFor(req.entity.id, req.userId),
+  });
+});
+
 /* ── DELETE /api/trips/:id ──
    Die Etappen verschwinden per CASCADE. */
-router.delete('/:id', (req, res) =>
+router.delete('/:id', loadTrip, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const trip = id === null ? null : findOwned('trips', id, req.userId);
-  if (!trip)
-  {
-    return res.status(404).json({ error: 'Reise nicht gefunden' });
-  }
-
-  db.prepare('DELETE FROM trips WHERE id = ? AND user_id = ?').run(id, req.userId);
+  db.prepare('DELETE FROM trips WHERE id = ? AND user_id = ?').run(req.entity.id, req.userId);
   res.json({ success: true });
 });
 

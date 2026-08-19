@@ -5,13 +5,15 @@
 import { IC } from '../icons.js';
 import { S } from '../state.js';
 import {
-  $, $$, esc, timeAgo, debounce, plural, renderEmptyState, toast, toastError,
+  $, $$, esc, timeAgo, debounce, plural, renderEmptyState, toastError,
 } from '../dom.js';
 import { API } from '../api.js';
-import { openConfirm } from '../modal.js';
 import { openNoteModal } from '../modals/note.js';
 import { openFolderManager } from '../modals/folders.js';
 import { markdownToPlainText } from '../markdown.js';
+import {
+  favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
+} from './entryActions.js';
 import { navigate } from '../router.js';
 import { offlineBannerHtml } from './partials.js';
 
@@ -86,7 +88,7 @@ function emptyHtml()
   if (S.noteQuery)
   {
     return renderEmptyState('🔍', 'Nichts gefunden',
-      `Keine Notiz enthält „${esc(S.noteQuery)}".`);
+      `Keine Notiz enthält „${S.noteQuery}".`);
   }
   if (S.noteFolder !== 'all')
   {
@@ -128,13 +130,9 @@ function cardHtml(note)
         </div>
       </div>
       <div class="entry-actions">
-        <button class="btn-fav${note.is_favorite ? ' on' : ''}" data-fav="${note.id}"
-          title="${note.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}">
-          ${IC.star}</button>
-        <button class="btn btn-ghost btn-sm" data-edit="${note.id}"
-          title="Bearbeiten">${IC.edit}</button>
-        <button class="btn btn-ghost btn-sm" data-del="${note.id}"
-          title="Löschen">${IC.trash}</button>
+        ${favButtonHtml(note)}
+        ${editButtonHtml(note.id)}
+        ${deleteButtonHtml(note.id)}
       </div>
     </div>`;
 }
@@ -163,14 +161,20 @@ export function bindNotes()
     field.setSelectionRange(field.value.length, field.value.length);
   }, 350));
 
-  $$('[data-open]').forEach(el =>
-    el.addEventListener('click', () => openForReading(Number(el.dataset.open))));
-  $$('[data-edit]').forEach(btn =>
-    btn.addEventListener('click', () => openForEdit(Number(btn.dataset.edit))));
-  $$('[data-fav]').forEach(btn =>
-    btn.addEventListener('click', () => toggleFavorite(Number(btn.dataset.fav))));
-  $$('[data-del]').forEach(btn =>
-    btn.addEventListener('click', () => confirmDelete(Number(btn.dataset.del))));
+  bindEntryActions({
+    itemById: id => S.notes.find(n => n.id === id),
+    open: openForReading,
+    edit: openForEdit,
+    setFavorite: API.notes.setFavorite,
+    remove: API.notes.remove,
+    describeDeletion: note => ({
+      title: 'Notiz löschen',
+      bodyHtml: deletionBodyHtml(note.title, note.attachmentCount
+        ? ` und ${plural(note.attachmentCount, 'Anhang', 'Anhänge')}` : ''),
+    }),
+    deletedMessage: 'Notiz gelöscht',
+    onDone: () => navigate('notes'),
+  });
 }
 
 /* Ein Klick auf die Karte führt zum Lesen, der Stift daneben zum Bearbeiten —
@@ -193,53 +197,4 @@ async function openForEdit(id)
   {
     toastError(err);
   }
-}
-
-async function toggleFavorite(id)
-{
-  const note = S.notes.find(n => n.id === id);
-  try
-  {
-    await API.notes.update(id, {
-      title: note.title,
-      body: note.body,
-      // Ohne folder_id würde die Zuordnung beim Umschalten verloren gehen
-      folder_id: note.folder_id,
-      is_favorite: !note.is_favorite,
-    });
-    navigate('notes');
-  }
-  catch (err)
-  {
-    toastError(err);
-  }
-}
-
-function confirmDelete(id)
-{
-  const note = S.notes.find(n => n.id === id);
-  const attachmentNote = note.attachmentCount
-    ? ` und ${plural(note.attachmentCount, 'Anhang', 'Anhänge')}`
-    : '';
-
-  openConfirm({
-    title: 'Notiz löschen',
-    bodyHtml: `<strong>${esc(note.title)}</strong>${attachmentNote}
-      wird endgültig gelöscht.`,
-    confirmLabel: 'Löschen',
-    confirmIcon: IC.trash,
-    onConfirm: async () =>
-    {
-      try
-      {
-        await API.notes.remove(id);
-        toast('Notiz gelöscht', 'success');
-        navigate('notes');
-      }
-      catch (err)
-      {
-        toastError(err);
-      }
-    },
-  });
 }

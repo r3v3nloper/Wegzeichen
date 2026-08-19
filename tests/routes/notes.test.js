@@ -108,6 +108,76 @@ describe('Ändern', () =>
   });
 });
 
+describe('Favorit umschalten', () =>
+{
+  test('setzt das Kennzeichen ohne den Inhalt anzufassen', async () =>
+  {
+    const markdown = '## Tag 1\n\n- Brotzeit';
+    const note = await createNote({ title: 'Rennsteig', body: markdown });
+
+    const res = await srv.req('PUT', `/api/notes/${note.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.data.is_favorite, 1);
+    assert.equal(res.data.title, 'Rennsteig');
+    assert.equal(res.data.body, markdown);
+  });
+
+  test('behält die Zuordnung zum Ordner', async () =>
+  {
+    /* Vorher schickte das Frontend zum Umschalten die ganze Notiz zurück und
+       musste die Ordner-ID selbst mitliefern — genau das ist hier nicht mehr
+       nötig und darf auch nicht mehr schiefgehen. */
+    const folder = (await srv.req('POST', '/api/note-folders', { name: 'Wandern' }, token)).data;
+    const note = await createNote({ title: 'Im Ordner', folder_id: folder.id });
+
+    const res = await srv.req('PUT', `/api/notes/${note.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.data.folder_id, folder.id);
+    assert.equal(res.data.folder_name, 'Wandern');
+  });
+
+  test('liefert die Anhänge mit', async () =>
+  {
+    const note = await createNote({ title: 'Mit Anhang' });
+    await srv.upload(`/api/notes/${note.id}/attachments`, [
+      { filename: 'packliste.md', contentType: 'text/markdown', content: '# Packliste' },
+    ], token);
+
+    const res = await srv.req('PUT', `/api/notes/${note.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.data.attachments.length, 1);
+  });
+
+  test('nimmt das Kennzeichen auch wieder zurück', async () =>
+  {
+    const note = await createNote({ title: 'Hin und her', is_favorite: true });
+
+    const res = await srv.req('PUT', `/api/notes/${note.id}/favorite`,
+      { is_favorite: false }, token);
+
+    assert.equal(res.data.is_favorite, 0);
+  });
+
+  test('antwortet für eine unbekannte Notiz mit 404', async () =>
+  {
+    const res = await srv.req('PUT', '/api/notes/999999/favorite',
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 404);
+  });
+
+  test('antwortet für eine unsinnige ID mit 404', async () =>
+  {
+    const res = await srv.req('PUT', '/api/notes/abc/favorite', { is_favorite: true }, token);
+
+    assert.equal(res.status, 404);
+  });
+});
+
 describe('Suche', () =>
 {
   test('findet über Titel und Inhalt', async () =>

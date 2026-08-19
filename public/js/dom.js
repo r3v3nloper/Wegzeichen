@@ -161,13 +161,16 @@ export function bindStarPickers(ctx)
   });
 }
 
-export function renderEmptyState(emoji, title, msg, btn = '')
+/* Titel und Text sind Text, nicht Markup: sie werden hier escaped. Nur
+   `btnHtml` ist HTML — der Name sagt das, damit niemand versehentlich
+   Nutzereingaben hineingibt. */
+export function renderEmptyState(emoji, title, msg, btnHtml = '')
 {
   return `<div class="empty-state">
     <div class="empty-state-emoji">${emoji}</div>
-    ${title ? `<h3>${title}</h3>` : ''}
-    ${msg ? `<p>${msg}</p>` : ''}
-    ${btn}
+    ${title ? `<h3>${esc(title)}</h3>` : ''}
+    ${msg ? `<p>${esc(msg)}</p>` : ''}
+    ${btnHtml}
   </div>`;
 }
 

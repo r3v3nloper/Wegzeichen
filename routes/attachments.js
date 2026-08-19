@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { upload, handleUploadErrors } = require('../middleware/upload');
-const { findOwned } = require('../utils/ownership');
+const loadOwned = require('../middleware/owned');
 const v = require('../utils/validate');
 const files = require('../utils/attachments');
 
@@ -11,21 +11,7 @@ const router = express.Router({ mergeParams: true });
 
 /* Jede Route dieses Routers prüft zuerst, dass die Notiz dem Nutzer gehört —
    sonst wären Anhänge über eine geratene Notiz-ID erreichbar. */
-router.use((req, res, next) =>
-{
-  const noteId = v.parseIdParam(req.params.noteId);
-  if (noteId === null)
-  {
-    return res.status(400).json({ error: 'Ungültige Notiz-ID' });
-  }
-  const note = findOwned('notes', noteId, req.userId);
-  if (!note)
-  {
-    return res.status(404).json({ error: 'Notiz nicht gefunden' });
-  }
-  req.note = note;
-  next();
-});
+router.use(loadOwned('notes', 'Notiz nicht gefunden', { param: 'noteId', as: 'note' }));
 
 function userUsageBytes(userId)
 {

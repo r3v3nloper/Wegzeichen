@@ -197,6 +197,11 @@ export const API = (() =>
       get: id => req('GET', `/notes/${id}`),
       create: data => req('POST', '/notes', data),
       update: (id, data) => req('PUT', `/notes/${id}`, data),
+      /* Nur das Kennzeichen. Der ganze Datensatz zurückzuschicken wäre riskant:
+         käme die Liste aus dem Offline-Cache, würde der neuere Serverstand
+         überschrieben. */
+      setFavorite: (id, isFavorite) =>
+        req('PUT', `/notes/${id}/favorite`, { is_favorite: isFavorite }),
       remove: id => req('DELETE', `/notes/${id}`),
     },
 
@@ -213,6 +218,8 @@ export const API = (() =>
       get: id => req('GET', `/spots/${id}`),
       create: data => req('POST', '/spots', data),
       update: (id, data) => req('PUT', `/spots/${id}`, data),
+      setFavorite: (id, isFavorite) =>
+        req('PUT', `/spots/${id}/favorite`, { is_favorite: isFavorite }),
       remove: id => req('DELETE', `/spots/${id}`),
     },
 
@@ -221,6 +228,8 @@ export const API = (() =>
       get: id => req('GET', `/trips/${id}`),
       create: data => req('POST', '/trips', data),
       update: (id, data) => req('PUT', `/trips/${id}`, data),
+      setFavorite: (id, isFavorite) =>
+        req('PUT', `/trips/${id}/favorite`, { is_favorite: isFavorite }),
       remove: id => req('DELETE', `/trips/${id}`),
     },
 

@@ -8,11 +8,13 @@
 import { IC } from '../icons.js';
 import { S } from '../state.js';
 import { API } from '../api.js';
-import { $, $$, esc, timeAgo, plural, toast, toastError } from '../dom.js';
-import { openConfirm } from '../modal.js';
+import { esc, timeAgo, plural } from '../dom.js';
 import { openNoteModal } from '../modals/note.js';
 import { renderMarkdown } from '../markdown.js';
 import { attachmentListHtml, bindAttachmentOpeners } from '../attachments.js';
+import {
+  favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
+} from './entryActions.js';
 import { navigate } from '../router.js';
 import { offlineBannerHtml } from './partials.js';
 
@@ -40,12 +42,9 @@ export function renderNote()
           </div>
         </div>
         <div class="entry-actions">
-          <button class="btn-fav${note.is_favorite ? ' on' : ''}" id="note-fav"
-            title="${note.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}">
-            ${IC.star}</button>
-          <button class="btn btn-primary btn-sm" id="note-edit">
-            ${IC.edit}<span>Bearbeiten</span></button>
-          <button class="btn btn-ghost btn-sm" id="note-del" title="Löschen">${IC.trash}</button>
+          ${favButtonHtml(note)}
+          ${editButtonHtml(note.id)}
+          ${deleteButtonHtml(note.id)}
         </div>
       </div>
 
@@ -88,55 +87,24 @@ export function bindNote()
 
   bindAttachmentOpeners(document, note.id, note.attachments || []);
 
-  $('#note-edit')?.addEventListener('click', () =>
-    openNoteModal(note, () => navigate('note')));
-
-  $('#note-fav')?.addEventListener('click', async () =>
-  {
-    try
+  bindEntryActions({
+    itemById: () => note,
+    edit: () => openNoteModal(note, () => navigate('note')),
+    setFavorite: API.notes.setFavorite,
+    remove: API.notes.remove,
+    describeDeletion: () => ({
+      title: 'Notiz löschen',
+      bodyHtml: deletionBodyHtml(note.title, note.attachments?.length
+        ? ` und ${plural(note.attachments.length, 'Anhang', 'Anhänge')}` : ''),
+    }),
+    deletedMessage: 'Notiz gelöscht',
+    // Der Stern lädt die Leseansicht neu; nach dem Löschen gibt es sie nicht mehr
+    onDone: () => navigate('note'),
+    onRemoved: () =>
     {
-      await API.notes.update(note.id, {
-        title: note.title,
-        body: note.body,
-        // Ohne folder_id würde die Zuordnung beim Umschalten verloren gehen
-        folder_id: note.folder_id,
-        is_favorite: !note.is_favorite,
-      });
-      navigate('note');
-    }
-    catch (err)
-    {
-      toastError(err);
-    }
-  });
-
-  $('#note-del')?.addEventListener('click', () => openConfirm({
-    title: 'Notiz löschen',
-    bodyHtml: `<strong>${esc(note.title)}</strong>${note.attachments?.length
-      ? ` und ${plural(note.attachments.length, 'Anhang', 'Anhänge')}` : ''}
-      wird endgültig gelöscht.`,
-    confirmLabel: 'Löschen',
-    confirmIcon: IC.trash,
-    onConfirm: async () =>
-    {
-      try
-      {
-        await API.notes.remove(note.id);
-        S.openNote = null;
-        toast('Notiz gelöscht', 'success');
-        navigate('notes');
-      }
-      catch (err)
-      {
-        toastError(err);
-      }
+      S.openNoteId = null;
+      S.openNote = null;
+      navigate('notes');
     },
-  }));
-
-  /* Aufgabenlisten sind Anzeige, nicht Eingabe — ohne dieses Abschalten
-     ließen sich Häkchen setzen, die niemand speichert. */
-  $$('.note-body input[type="checkbox"]').forEach(box =>
-  {
-    box.disabled = true;
   });
 }

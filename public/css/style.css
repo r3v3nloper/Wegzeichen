@@ -2105,3 +2105,16 @@ select.form-input
     display: none;
   }
 }
+
+/* ===== EINGABEFELDER AUF SCHMALEN SCHIRMEN =====
+   iOS zoomt beim Fokus in ein Feld hinein, sobald dessen Schrift kleiner als
+   16px ist. Früher verhinderte user-scalable=no im Viewport das Zoomen ganz —
+   was auch das Aufziehen mit zwei Fingern gesperrt hat. Diese Größe löst
+   dasselbe Problem, ohne jemanden auszuschließen. */
+@media (max-width: 540px)
+{
+  .form-input, .form-select, .filter-input, .search-input, .md-input, textarea
+  {
+    font-size: 16px;
+  }
+}

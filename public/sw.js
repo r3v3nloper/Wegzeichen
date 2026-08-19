@@ -56,6 +56,7 @@ const STATIC = [
   '/js/views/home.js',
   '/js/views/notes.js',
   '/js/views/note.js',
+  '/js/views/entryActions.js',
   '/js/views/spots.js',
   '/js/views/trips.js',
   '/js/views/profile.js',

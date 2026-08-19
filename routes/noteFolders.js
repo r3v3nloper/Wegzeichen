@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
+const loadOwned = require('../middleware/owned');
 const { findOwned } = require('../utils/ownership');
 const v = require('../utils/validate');
 
@@ -9,6 +10,8 @@ const v = require('../utils/validate');
    Registrierung auseinanderzuhalten. */
 const router = express.Router();
 router.use(authMiddleware);
+
+const loadFolder = loadOwned('note_folders', 'Ordner nicht gefunden');
 
 const MAX_NAME = 60;
 
@@ -73,15 +76,9 @@ router.post('/', (req, res) =>
 /* ── PUT /api/note-folders/:id ──
    Umbenennen wirkt für alle enthaltenen Notizen auf einmal — genau der Grund,
    warum Ordner eine eigene Tabelle sind und kein Textfeld an der Notiz. */
-router.put('/:id', (req, res) =>
+router.put('/:id', loadFolder, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const existing = id === null ? null : findOwned('note_folders', id, req.userId);
-  if (!existing)
-  {
-    return res.status(404).json({ error: 'Ordner nicht gefunden' });
-  }
-
+  const id = req.entity.id;
   const name = v.requiredText(req.body.name, 'Ordnername', MAX_NAME);
 
   try
@@ -99,16 +96,10 @@ router.put('/:id', (req, res) =>
 /* ── DELETE /api/note-folders/:id ──
    Die Notizen bleiben und rutschen per ON DELETE SET NULL nach „Ohne Ordner".
    Ein Ordner ist eine Einordnung, kein Behälter — löschen darf nichts vernichten. */
-router.delete('/:id', (req, res) =>
+router.delete('/:id', loadFolder, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const folder = id === null ? null : findOwned('note_folders', id, req.userId);
-  if (!folder)
-  {
-    return res.status(404).json({ error: 'Ordner nicht gefunden' });
-  }
-
-  db.prepare('DELETE FROM note_folders WHERE id = ? AND user_id = ?').run(id, req.userId);
+  db.prepare('DELETE FROM note_folders WHERE id = ? AND user_id = ?')
+    .run(req.entity.id, req.userId);
   res.json({ success: true });
 });
 

@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
-const { findOwned, likePattern } = require('../utils/ownership');
+const loadOwned = require('../middleware/owned');
+const { findOwned, setFavoriteOwned, likePattern } = require('../utils/ownership');
 const { router: attachmentsRouter, publicAttachment } = require('./attachments');
 const v = require('../utils/validate');
 const files = require('../utils/attachments');
@@ -33,6 +34,13 @@ function ownedNote(id, userId)
     WHERE n.id = ? AND n.user_id = ?
   `).get(id, userId);
 }
+
+/* Jede Route mit :id bekommt die Notiz samt Ordnernamen vorgeladen; fehlt sie
+   oder gehört sie einem anderen, antwortet die Middleware mit 404. */
+const loadNote = loadOwned('notes', 'Notiz nicht gefunden', {
+  as: 'note',
+  load: ownedNote,
+});
 
 /* Die Zuordnung darf nur auf eigene Ordner zeigen — sonst ließe sich über eine
    geratene ID der Ordnername eines anderen Nutzers auslesen. Ein fremder oder
@@ -96,15 +104,9 @@ router.get('/', (req, res) =>
 });
 
 /* ── GET /api/notes/:id ───────────────────────────────────────────────────── */
-router.get('/:id', (req, res) =>
+router.get('/:id', loadNote, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const note = id === null ? null : ownedNote(id, req.userId);
-  if (!note)
-  {
-    return res.status(404).json({ error: 'Notiz nicht gefunden' });
-  }
-  res.json({ ...note, attachments: attachmentsFor(note.id) });
+  res.json({ ...req.note, attachments: attachmentsFor(req.note.id) });
 });
 
 /* ── POST /api/notes ──────────────────────────────────────────────────────── */
@@ -120,15 +122,9 @@ router.post('/', (req, res) =>
 });
 
 /* ── PUT /api/notes/:id ───────────────────────────────────────────────────── */
-router.put('/:id', (req, res) =>
+router.put('/:id', loadNote, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const existing = id === null ? null : findOwned('notes', id, req.userId);
-  if (!existing)
-  {
-    return res.status(404).json({ error: 'Notiz nicht gefunden' });
-  }
-
+  const id = req.note.id;
   const data = readBody(req.body, req.userId);
   db.prepare(`
     UPDATE notes SET folder_id = ?, title = ?, body = ?, is_favorite = ?,
@@ -139,18 +135,23 @@ router.put('/:id', (req, res) =>
   res.json({ ...ownedNote(id, req.userId), attachments: attachmentsFor(id) });
 });
 
+/* ── PUT /api/notes/:id/favorite ──
+   Schaltet allein das Kennzeichen um. Vorher musste das Frontend dafür die
+   ganze Notiz zurückschicken; kam die Liste aus dem Offline-Cache, überschrieb
+   ein Klick auf den Stern den neueren Serverstand mit der veralteten Kopie. */
+router.put('/:id/favorite', loadNote, (req, res) =>
+{
+  setFavoriteOwned('notes', req.note.id, req.userId, v.boolFlag(req.body.is_favorite));
+  const note = ownedNote(req.note.id, req.userId);
+  res.json({ ...note, attachments: attachmentsFor(note.id) });
+});
+
 /* ── DELETE /api/notes/:id ──
    Die Datenbankzeilen der Anhänge verschwinden per CASCADE, die Dateien auf
    der Platte müssen ausdrücklich weg — sonst bleiben Waisen liegen. */
-router.delete('/:id', (req, res) =>
+router.delete('/:id', loadNote, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const note = id === null ? null : findOwned('notes', id, req.userId);
-  if (!note)
-  {
-    return res.status(404).json({ error: 'Notiz nicht gefunden' });
-  }
-
+  const id = req.note.id;
   const stored = db.prepare('SELECT stored_name FROM note_attachments WHERE note_id = ?')
     .all(id);
   db.prepare('DELETE FROM notes WHERE id = ? AND user_id = ?').run(id, req.userId);

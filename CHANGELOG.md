@@ -28,6 +28,23 @@
 - `public/js/dates.js` bündelt die Datumsrechnung als reines, testbares Modul.
 
 ### Geändert
+- **Der Stern schickt nicht mehr den ganzen Datensatz.** Neue Route
+  `PUT /api/<ressource>/:id/favorite` für Notizen, Ziele und Reisen. Vorher baute
+  das Frontend zum Umschalten den vollständigen Eintrag neu zusammen; kam die
+  Liste aus dem Offline-Cache, überschrieb ein Klick auf den Stern den neueren
+  Serverstand mit der veralteten Kopie.
+- **Zugriffsprüfung der Routen liegt in `middleware/owned.js`.** Das Vorspiel
+  „ID prüfen, Besitz prüfen, sonst 404" stand vorher sechzehnmal wörtlich in den
+  Routen von Notizen, Ordnern, Zielen, Reisen und Anhängen.
+- **Eintragskarten teilen ihre Aktionen.** `views/entryActions.js` ersetzt die
+  vierfach vorhandenen Funktionen zum Umschalten des Favoriten und zum Löschen.
+  Die Icon-Knöpfe tragen jetzt `aria-label`.
+- **Das Aufziehen mit zwei Fingern ist nicht mehr gesperrt.** `user-scalable=no`
+  und `maximum-scale` sind aus dem Viewport verschwunden (WCAG 1.4.4). Damit iOS
+  beim Fokus in ein Feld nicht selbst hineinzoomt, sind Eingabefelder auf
+  schmalen Schirmen 16 Pixel groß.
+- `renderEmptyState()` escaped Titel und Text jetzt selbst; nur der Knopf ist
+  weiterhin HTML und heißt deshalb `btnHtml`.
 - **Ein Ziel kann Wanderweg und Ort gleichzeitig sein.** Statt eines festen
   `kind` tragen Einträge die Kennzeichen `is_trail` und `is_place`. Damit lassen
   sich Schluchten, Wälder oder Seen erfassen, die man anfährt *und* abläuft —

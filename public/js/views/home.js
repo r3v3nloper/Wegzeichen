@@ -263,7 +263,7 @@ function searchResultsHtml()
   if (!groups.length)
   {
     return `<div style="margin-bottom:24px">${renderEmptyState('🔍', 'Nichts gefunden',
-      `Kein Eintrag enthält „${esc(S.searchQuery)}".`)}</div>`;
+      `Kein Eintrag enthält „${S.searchQuery}".`)}</div>`;
   }
 
   return `<div class="section">

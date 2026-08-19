@@ -6,17 +6,17 @@
    ===================================================== */
 import { IC } from '../icons.js';
 import { S, homePoint, countryName } from '../state.js';
-import {
-  $, $$, esc, debounce, starsHtml, renderEmptyState, toast, toastError,
-} from '../dom.js';
+import { $, $$, esc, debounce, starsHtml, renderEmptyState } from '../dom.js';
 import { formatDate, relativeDateLabel, isPast } from '../dates.js';
 import { API } from '../api.js';
-import { openConfirm } from '../modal.js';
 import { openSpotModal } from '../modals/spot.js';
 import { navigate } from '../router.js';
 import { renderSpotMap } from '../map.js';
 import { withDistances, sortItems, formatDistance, mapsDirectionsUrl } from '../geo.js';
 import { offlineBannerHtml, countryGroupsHtml, countryFilterHtml } from './partials.js';
+import {
+  favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
+} from './entryActions.js';
 
 const KIND_META = {
   trail: {
@@ -200,17 +200,13 @@ function cardHtml(kind, spot)
         <div class="entry-meta">${metaChipsHtml(kind, spot)}</div>
       </div>
       <div class="entry-actions">
-        <button class="btn-fav${spot.is_favorite ? ' on' : ''}" data-fav="${spot.id}"
-          title="${spot.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}">
-          ${IC.star}</button>
+        ${favButtonHtml(spot)}
         ${navUrl ? `<a class="btn btn-ghost btn-sm" href="${esc(navUrl)}" target="_blank"
           rel="noopener" title="Route in Google Maps">${IC.navigate}</a>` : ''}
         ${spot.source_url ? `<a class="btn btn-ghost btn-sm" href="${esc(spot.source_url)}"
           target="_blank" rel="noopener" title="Quelle öffnen">${IC.external}</a>` : ''}
-        <button class="btn btn-ghost btn-sm" data-edit="${spot.id}"
-          title="Bearbeiten">${IC.edit}</button>
-        <button class="btn btn-ghost btn-sm" data-del="${spot.id}"
-          title="Löschen">${IC.trash}</button>
+        ${editButtonHtml(spot.id)}
+        ${deleteButtonHtml(spot.id)}
       </div>
     </div>`;
 }
@@ -342,14 +338,20 @@ export function bindSpots(kind)
     renderSpotMap($('#spot-map'), visibleSpots(kind), spot => openForEdit(kind, spot.id));
   }
 
-  $$('[data-open]').forEach(el =>
-    el.addEventListener('click', () => openForEdit(kind, Number(el.dataset.open))));
-  $$('[data-edit]').forEach(btn =>
-    btn.addEventListener('click', () => openForEdit(kind, Number(btn.dataset.edit))));
-  $$('[data-fav]').forEach(btn =>
-    btn.addEventListener('click', () => toggleFavorite(kind, Number(btn.dataset.fav))));
-  $$('[data-del]').forEach(btn =>
-    btn.addEventListener('click', () => confirmDelete(kind, Number(btn.dataset.del))));
+  const openForEditInKind = id => openForEdit(kind, id);
+  bindEntryActions({
+    itemById: id => S.spots[kind].find(spot => spot.id === id),
+    open: openForEditInKind,
+    edit: openForEditInKind,
+    setFavorite: API.spots.setFavorite,
+    remove: API.spots.remove,
+    describeDeletion: spot => ({
+      title: `${KIND_META[kind].singular} löschen`,
+      bodyHtml: deletionBodyHtml(spot.name),
+    }),
+    deletedMessage: 'Eintrag gelöscht',
+    onDone: () => navigate(S.view),
+  });
 }
 
 /* Neu zeichnen ohne Serveraufruf. `focusSelector` stellt den Cursor im
@@ -370,43 +372,4 @@ function openForEdit(kind, id)
 {
   const spot = S.spots[kind].find(s => s.id === id);
   openSpotModal(kind, spot, () => navigate(S.view));
-}
-
-async function toggleFavorite(kind, id)
-{
-  const spot = S.spots[kind].find(s => s.id === id);
-  try
-  {
-    // Die Aspekte kommen über den Spread mit und bleiben dadurch unverändert
-    await API.spots.update(id, { ...spot, is_favorite: !spot.is_favorite });
-    navigate(S.view);
-  }
-  catch (err)
-  {
-    toastError(err);
-  }
-}
-
-function confirmDelete(kind, id)
-{
-  const spot = S.spots[kind].find(s => s.id === id);
-  openConfirm({
-    title: `${KIND_META[kind].singular} löschen`,
-    bodyHtml: `<strong>${esc(spot.name)}</strong> wird endgültig gelöscht.`,
-    confirmLabel: 'Löschen',
-    confirmIcon: IC.trash,
-    onConfirm: async () =>
-    {
-      try
-      {
-        await API.spots.remove(id);
-        toast('Eintrag gelöscht', 'success');
-        navigate(S.view);
-      }
-      catch (err)
-      {
-        toastError(err);
-      }
-    },
-  });
 }

@@ -71,6 +71,18 @@ describe('Notizen', () =>
     assert.equal(unchanged.data.title, 'Alices Geheimnis');
   });
 
+  test('Bob kann Alices Notiz nicht zum Favoriten machen', async () =>
+  {
+    const res = await srv.req('PUT', `/api/notes/${aliceNote.id}/favorite`, {
+      is_favorite: true,
+    }, bob.token);
+
+    assert.equal(res.status, 404);
+
+    const unchanged = await srv.req('GET', `/api/notes/${aliceNote.id}`, undefined, alice.token);
+    assert.equal(unchanged.data.is_favorite, 0);
+  });
+
   test('Bob kann Alices Notiz nicht löschen', async () =>
   {
     const res = await srv.req('DELETE', `/api/notes/${aliceNote.id}`, undefined, bob.token);
@@ -187,6 +199,18 @@ describe('Orte und Wanderwege', () =>
     assert.equal(write.status, 404);
     assert.equal(remove.status, 404);
   });
+
+  test('Bob kann Alices Ort nicht zum Favoriten machen', async () =>
+  {
+    const res = await srv.req('PUT', `/api/spots/${aliceSpot.id}/favorite`, {
+      is_favorite: true,
+    }, bob.token);
+
+    assert.equal(res.status, 404);
+
+    const unchanged = await srv.req('GET', `/api/spots/${aliceSpot.id}`, undefined, alice.token);
+    assert.equal(unchanged.data.is_favorite, 0);
+  });
 });
 
 describe('Reisen', () =>
@@ -209,6 +233,18 @@ describe('Reisen', () =>
     assert.equal(read.status, 404);
     assert.equal(write.status, 404);
     assert.equal(remove.status, 404);
+  });
+
+  test('Bob kann Alices Reise nicht zum Favoriten machen', async () =>
+  {
+    const res = await srv.req('PUT', `/api/trips/${aliceTrip.id}/favorite`, {
+      is_favorite: true,
+    }, bob.token);
+
+    assert.equal(res.status, 404);
+
+    const unchanged = await srv.req('GET', `/api/trips/${aliceTrip.id}`, undefined, alice.token);
+    assert.equal(unchanged.data.is_favorite, 0);
   });
 
   test('Bob kann eine Etappe nicht mit Alices Ort verknüpfen', async () =>

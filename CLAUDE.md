@@ -23,12 +23,13 @@ Portiert vom Muster in `../AniGa`, inklusive Farbschema.
 app.js       Express-App ohne listen (damit Tests sie hochfahren können)
 server.js    Start
 db.js        Schema, Migrationen, Admin-Seed
-middleware/  auth (JWT), admin, upload (multer)
+middleware/  auth (JWT), admin, owned (Besitz + 404), upload (multer)
 routes/      auth, users, admin, meta, notes(+attachments), noteFolders,
              spots, trips, search, geo
 utils/       validate, ownership, countries, attachments, nominatim
 public/js/   state, api, router, shell, dom, geo, dates, map, modal,
              markdown(+-input, -editor), attachments + views/ + modals/
+             views/entryActions.js: Favorit und Löschen aller Eintragslisten
 ```
 
 Details und Begründungen stehen in [Docs/architecture.md](Docs/architecture.md).
@@ -46,6 +47,30 @@ Ort *und* Weg). Neue aspektspezifische Felder gehören in `FIELDS_BY_KIND` in
 `routes/spots.js`, damit sie ohne den Aspekt geleert werden. `views/spots.js`
 bedient beide — nicht duplizieren. Wo beide Listen zusammenlaufen, über
 `allSpots()` aus `state.js` entdoppeln.
+
+**Zugriffsprüfung über `loadOwned` aus `middleware/owned.js`**, nicht von Hand
+in der Route. Die Middleware prüft ID und Besitzer und legt den Eintrag auf
+`req.entity` (oder unter eigenem Namen, siehe `req.note` bei den Anhängen).
+Fremdzugriffe bleiben 404, nicht 403.
+
+**Den Favoriten nur über `PUT /:id/favorite` umschalten.** Ein `PUT` auf die
+Ressource ersetzt alles; schickt das Frontend dafür seinen eigenen Stand zurück,
+überschreibt es bei einem Offline-Cache-Treffer den neueren Serverstand. Im
+Frontend heißt der Weg `API.<ressource>.setFavorite(id, flag)`.
+
+**Favorit und Löschen einer Eintragskarte kommen aus `views/entryActions.js`.**
+Vier Views hatten das vorher je selbst. Wer eine neue Liste baut, nimmt
+`favButtonHtml`, `editButtonHtml`, `deleteButtonHtml` und `bindEntryActions` —
+dort stecken auch die `aria-label` der Icon-Knöpfe.
+
+**Titel und Text von `renderEmptyState()` werden intern escaped.** Nicht noch
+einmal `esc()` davorsetzen, sonst stehen `&amp;quot;` in der Meldung. HTML nimmt
+nur der letzte Parameter `btnHtml`.
+
+**`user-scalable=no` gehört nicht zurück in den Viewport.** Das sperrt das
+Aufziehen mit zwei Fingern. Damit iOS beim Fokus in ein Feld nicht selbst zoomt,
+sind Eingabefelder unter 540px 16px groß — diese Regel in `style.css` muss
+bleiben, sonst kommt das Zoomen beim Tippen zurück.
 
 **Notiztext wird nur über `markdown.js` zu HTML.** Der Inhalt einer Notiz ist
 Markdown und Nutzertext zugleich. `renderMarkdown()` rendert mit marked und

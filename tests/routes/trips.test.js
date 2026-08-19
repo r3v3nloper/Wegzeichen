@@ -217,6 +217,41 @@ describe('Ändern', () =>
   });
 });
 
+describe('Favorit umschalten', () =>
+{
+  test('setzt das Kennzeichen und lässt die Etappen stehen', async () =>
+  {
+    /* Vorher musste das Frontend die Etappen beim Umschalten bewusst weglassen,
+       damit sie nicht ersetzt werden. Diese Route kann sie gar nicht anfassen. */
+    const trip = (await create({
+      title: 'Toskana', summary: 'Zwei Wochen', start_date: '2026-09-01',
+      stages: [
+        { day_from: 1, day_to: 3, location_name: 'Florenz', notes: 'Uffizien' },
+        { day_from: 4, day_to: 7, location_name: 'Siena' },
+      ],
+    })).data;
+
+    const res = await srv.req('PUT', `/api/trips/${trip.id}/favorite`,
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.data.is_favorite, 1);
+    assert.equal(res.data.stages.length, 2);
+    assert.equal(res.data.stages[0].location_name, 'Florenz');
+    assert.equal(res.data.stages[0].notes, 'Uffizien');
+    assert.equal(res.data.summary, 'Zwei Wochen');
+    assert.equal(res.data.start_date, '2026-09-01');
+  });
+
+  test('antwortet für eine unbekannte Reise mit 404', async () =>
+  {
+    const res = await srv.req('PUT', '/api/trips/999999/favorite',
+      { is_favorite: true }, token);
+
+    assert.equal(res.status, 404);
+  });
+});
+
 describe('Sortierung der Liste', () =>
 {
   test('Favoriten oben, dann die jüngste Reise, Reisen ohne Datum zuletzt', async () =>

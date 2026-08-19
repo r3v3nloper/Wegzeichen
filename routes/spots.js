@@ -1,11 +1,14 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
-const { findOwned, likePattern } = require('../utils/ownership');
+const loadOwned = require('../middleware/owned');
+const { findOwned, setFavoriteOwned, likePattern } = require('../utils/ownership');
 const v = require('../utils/validate');
 
 const router = express.Router();
 router.use(authMiddleware);
+
+const loadSpot = loadOwned('spots', 'Eintrag nicht gefunden');
 
 const KINDS = ['trail', 'place'];
 const STATUSES = ['wishlist', 'visited'];
@@ -142,15 +145,9 @@ router.get('/', (req, res) =>
 });
 
 /* ── GET /api/spots/:id ───────────────────────────────────────────────────── */
-router.get('/:id', (req, res) =>
+router.get('/:id', loadSpot, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const spot = id === null ? null : findOwned('spots', id, req.userId);
-  if (!spot)
-  {
-    return res.status(404).json({ error: 'Eintrag nicht gefunden' });
-  }
-  res.json(spot);
+  res.json(req.entity);
 });
 
 /* ── POST /api/spots ──────────────────────────────────────────────────────── */
@@ -169,17 +166,11 @@ router.post('/', (req, res) =>
 /* ── PUT /api/spots/:id ──
    Die Aspekte sind änderbar: aus einem Ort darf nachträglich auch ein
    Wanderweg werden. Fehlen beide Angaben im Body, bleibt es beim Bestehenden. */
-router.put('/:id', (req, res) =>
+router.put('/:id', loadSpot, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const existing = id === null ? null : findOwned('spots', id, req.userId);
-  if (!existing)
-  {
-    return res.status(404).json({ error: 'Eintrag nicht gefunden' });
-  }
-
+  const id = req.entity.id;
   const kinds = v.isBlank(req.body.is_trail) && v.isBlank(req.body.is_place)
-    ? { is_trail: existing.is_trail, is_place: existing.is_place }
+    ? { is_trail: req.entity.is_trail, is_place: req.entity.is_place }
     : readKinds(req.body);
   const data = readBody(req.body, kinds);
 
@@ -192,17 +183,18 @@ router.put('/:id', (req, res) =>
   res.json(findOwned('spots', id, req.userId));
 });
 
-/* ── DELETE /api/spots/:id ────────────────────────────────────────────────── */
-router.delete('/:id', (req, res) =>
+/* ── PUT /api/spots/:id/favorite ──
+   Nur das Kennzeichen — siehe die gleichnamige Route bei den Notizen. */
+router.put('/:id/favorite', loadSpot, (req, res) =>
 {
-  const id = v.parseIdParam(req.params.id);
-  const spot = id === null ? null : findOwned('spots', id, req.userId);
-  if (!spot)
-  {
-    return res.status(404).json({ error: 'Eintrag nicht gefunden' });
-  }
+  setFavoriteOwned('spots', req.entity.id, req.userId, v.boolFlag(req.body.is_favorite));
+  res.json(findOwned('spots', req.entity.id, req.userId));
+});
 
-  db.prepare('DELETE FROM spots WHERE id = ? AND user_id = ?').run(id, req.userId);
+/* ── DELETE /api/spots/:id ────────────────────────────────────────────────── */
+router.delete('/:id', loadSpot, (req, res) =>
+{
+  db.prepare('DELETE FROM spots WHERE id = ? AND user_id = ?').run(req.entity.id, req.userId);
   res.json({ success: true });
 });
 

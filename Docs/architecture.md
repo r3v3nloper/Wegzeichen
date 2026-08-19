@@ -266,8 +266,9 @@ Vanilla-ES-Module ohne Buildkette, aus AniGa übernommenes Muster:
 | `markdown-input.js` | Textumformungen der Werkzeugleiste — reine Funktionen |
 | `markdown-editor.js` | Eingabefeld mit Werkzeugleiste und Vorschau |
 | `attachments.js` | Anhangsliste und Öffnen eines Anhangs |
+| `views/entryActions.js` | Knöpfe und Verhalten einer Eintragskarte: öffnen, bearbeiten, Favorit, löschen |
 | `modal.js` | Modal-**Stapel** und Bestätigungsdialog |
-| `views/` | Eine Datei je Bereich, plus `partials.js` für gemeinsames Markup; `note.js` ist die Leseansicht einer Notiz |
+| `views/` | Eine Datei je Bereich, plus `partials.js` und `entryActions.js`; `note.js` liest eine Notiz |
 | `modals/` | Formulare für Notiz, Ort/Weg, Reise und Standortauswahl |
 
 ### Modals als Stapel
@@ -335,6 +336,44 @@ Liste führt keine Anhänge mit, und der Inhalt kann auf einem anderen Gerät
 geändert worden sein. Ist die Notiz inzwischen gelöscht, fällt der Router auf die
 Liste zurück statt eine Fehlerseite zu zeigen. `note` hat keinen eigenen
 Navigationseintrag; `NAV_PARENT` in `shell.js` hält deshalb „Notizen" aktiv.
+
+### Nur das Kennzeichen umschalten
+
+Es gibt kein PATCH auf den Ressourcen, ein `PUT` ersetzt den ganzen Datensatz.
+Für den Stern in der Liste war das gefährlich: das Frontend baute den vollen
+Datensatz aus `S` neu zusammen und schickte ihn zurück. Kam die Liste aus dem
+Offline-Cache, überschrieb ein Klick auf den Stern den neueren Serverstand mit
+der veralteten Kopie — und wer dem Modell ein Feld hinzufügte, musste daran
+denken, es in drei Views mitzuschicken.
+
+Stattdessen gibt es `PUT /api/<ressource>/:id/favorite`. Die Route fasst nur
+`is_favorite` und `updated_at` an; Etappen einer Reise, Aspekte eines Ziels und
+der Ordner einer Notiz bleiben unberührt, weil die Route sie nicht kennt.
+`setFavoriteOwned()` in `utils/ownership.js` ist die einzige Stelle, die das
+schreibt. Bewusst keine allgemeine PATCH-Route: bei den Zielen müsste sie
+`FIELDS_BY_KIND` beim Mischen mitdenken, und der einzige Bedarf ist heute
+dieser eine Schalter.
+
+### Zugriffsprüfung als Middleware
+
+`middleware/owned.js` ersetzt ein Vorspiel, das vorher sechzehnmal wörtlich in
+den Routen stand: ID prüfen, Besitz prüfen, sonst 404. `loadOwned('spots',
+'Eintrag nicht gefunden')` legt den Eintrag auf `req.entity` — oder unter einem
+eigenen Namen, wie `req.note` bei den Anhängen. Wer mehr als die Tabellenzeile
+braucht, gibt ein eigenes `load` mit; die Notiz kommt so mit dem Namen ihres
+Ordners. Die Whitelist der nutzerbezogenen Tabellen greift weiterhin, und zwar
+schon beim Bauen der Middleware statt erst bei der ersten Anfrage.
+
+### Eine Aktionsleiste für alle Eintragslisten
+
+`toggleFavorite` und `confirmDelete` lagen in vier Views nebeneinander:
+Notizen, Leseansicht, Ziele und Reisen. Gleich waren Bestätigungsdialog,
+Erfolgsmeldung und Fehlerpfad; unterschiedlich nur die Beschriftungen und die
+API-Aufrufe. `views/entryActions.js` nimmt beides als Parameter —
+`setFavorite`, `remove`, `describeDeletion`, `onDone` und für die Leseansicht
+zusätzlich `onRemoved`, weil sie den gelöschten Eintrag nicht neu laden darf.
+Die Knopf-Bausteine liefern gleich `aria-label` mit, damit reine Icon-Knöpfe
+nicht namenlos bleiben.
 
 ## Sicherheit
 

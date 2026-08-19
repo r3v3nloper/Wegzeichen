@@ -4,16 +4,17 @@
    ===================================================== */
 import { IC } from '../icons.js';
 import { S, countryName } from '../state.js';
-import {
-  $, $$, esc, plural, starsHtml, renderEmptyState, toast, toastError,
-} from '../dom.js';
+import { $, $$, esc, plural, starsHtml, renderEmptyState, toastError } from '../dom.js';
 import { formatDate, inclusiveDays } from '../dates.js';
 import { API } from '../api.js';
-import { openModal, closeModal, openConfirm } from '../modal.js';
+import { openModal, closeModal } from '../modal.js';
 import { openTripModal } from '../modals/trip.js';
 import { navigate } from '../router.js';
 import { mapsSearchUrl } from '../geo.js';
 import { offlineBannerHtml } from './partials.js';
+import {
+  favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
+} from './entryActions.js';
 
 /* Dauer wird aus den Datumsangaben abgeleitet und nicht gespeichert —
    sonst gäbe es zwei Wahrheiten. Beide Tage zählen mit. */
@@ -75,16 +76,12 @@ function cardHtml(trip)
         </div>
       </div>
       <div class="entry-actions">
-        <button class="btn-fav${trip.is_favorite ? ' on' : ''}" data-fav="${trip.id}"
-          title="${trip.is_favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}">
-          ${IC.star}</button>
+        ${favButtonHtml(trip)}
         ${trip.photos_url ? `<a class="btn btn-ghost btn-sm" href="${esc(trip.photos_url)}"
           target="_blank" rel="noopener" title="Bilder in der Cloud öffnen">
           ${IC.external}</a>` : ''}
-        <button class="btn btn-ghost btn-sm" data-edit="${trip.id}"
-          title="Bearbeiten">${IC.edit}</button>
-        <button class="btn btn-ghost btn-sm" data-del="${trip.id}"
-          title="Löschen">${IC.trash}</button>
+        ${editButtonHtml(trip.id)}
+        ${deleteButtonHtml(trip.id)}
       </div>
     </div>`;
 }
@@ -95,14 +92,20 @@ export function bindTrips()
   $('#btn-new-trip')?.addEventListener('click', openNew);
   $('#btn-new-trip-empty')?.addEventListener('click', openNew);
 
-  $$('[data-open]').forEach(el =>
-    el.addEventListener('click', () => openDetail(Number(el.dataset.open))));
-  $$('[data-edit]').forEach(btn =>
-    btn.addEventListener('click', () => openForEdit(Number(btn.dataset.edit))));
-  $$('[data-fav]').forEach(btn =>
-    btn.addEventListener('click', () => toggleFavorite(Number(btn.dataset.fav))));
-  $$('[data-del]').forEach(btn =>
-    btn.addEventListener('click', () => confirmDelete(Number(btn.dataset.del))));
+  bindEntryActions({
+    itemById: id => S.trips.find(trip => trip.id === id),
+    open: openDetail,
+    edit: openForEdit,
+    setFavorite: API.trips.setFavorite,
+    remove: API.trips.remove,
+    describeDeletion: trip => ({
+      title: 'Reise löschen',
+      bodyHtml: deletionBodyHtml(trip.title, trip.stageCount
+        ? ` und ${plural(trip.stageCount, 'Etappe', 'Etappen')}` : ''),
+    }),
+    deletedMessage: 'Reise gelöscht',
+    onDone: () => navigate('trips'),
+  });
 }
 
 async function loadTrip(id)
@@ -207,45 +210,4 @@ function dayLabel(stage)
   return stage.day_to && stage.day_to !== stage.day_from
     ? `Tag ${stage.day_from}–${stage.day_to}`
     : `Tag ${stage.day_from}`;
-}
-
-async function toggleFavorite(id)
-{
-  const trip = S.trips.find(t => t.id === id);
-  try
-  {
-    // stages weglassen: das Backend lässt sie unberührt, wenn sie fehlen
-    await API.trips.update(id, { ...trip, stages: undefined, is_favorite: !trip.is_favorite });
-    navigate('trips');
-  }
-  catch (err)
-  {
-    toastError(err);
-  }
-}
-
-function confirmDelete(id)
-{
-  const trip = S.trips.find(t => t.id === id);
-  openConfirm({
-    title: 'Reise löschen',
-    bodyHtml: `<strong>${esc(trip.title)}</strong>${trip.stageCount
-      ? ` und ${plural(trip.stageCount, 'Etappe', 'Etappen')}`
-      : ''} wird endgültig gelöscht.`,
-    confirmLabel: 'Löschen',
-    confirmIcon: IC.trash,
-    onConfirm: async () =>
-    {
-      try
-      {
-        await API.trips.remove(id);
-        toast('Reise gelöscht', 'success');
-        navigate('trips');
-      }
-      catch (err)
-      {
-        toastError(err);
-      }
-    },
-  });
 }

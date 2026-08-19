@@ -2,7 +2,11 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- Kein maximum-scale und kein user-scalable=no: das Aufziehen mit zwei
+       Fingern zu sperren schließt Menschen aus, die es brauchen (WCAG 1.4.4).
+       Damit iOS beim Fokus in ein Feld nicht selbst hineinzoomt, sind die
+       Eingabefelder auf schmalen Schirmen 16px groß — siehe style.css. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#7c4dff" />
   <!-- Ohne Referer blockt OpenStreetMap die Kartentiles. Die Policy steht
        zusätzlich im Dokument, weil der Service Worker die Shell cacht und
