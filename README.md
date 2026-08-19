@@ -46,6 +46,10 @@ npm run dev
 
 Die App läuft auf http://localhost:3000.
 
+Zum Entwickeln ist Node 22 die geprüfte Fassung. Die App selbst läuft ab Node 20 —
+darauf baut auch das Docker-Image (`node:20-alpine`). Nur das Glob-Muster im
+Testskript braucht einen neueren Testrunner: `npm test` ist auf 22.17 geprüft.
+
 ## Betrieb mit Docker
 
 ```bash
@@ -113,8 +117,9 @@ zusätzlich den Mindestabstand von einer Sekunde zwischen zwei Abfragen ein.
 npm test
 ```
 
-284 Tests, ohne Netzzugriff. Schwerpunkte sind die Datentrennung zwischen Nutzern,
-die Anhang-Limits samt Path-Traversal-Schutz und die Entfernungsberechnung.
+424 Tests, ohne Netzzugriff. Schwerpunkte sind die Datentrennung zwischen Nutzern,
+die Anhang-Limits samt Path-Traversal-Schutz, das Säubern des gerenderten Markdowns
+und die Entfernungsberechnung.
 Die Tests laden `.env` absichtlich nicht, damit sie unabhängig von der lokalen
 Konfiguration laufen.
 

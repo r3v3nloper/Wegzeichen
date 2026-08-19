@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 0.2.0 — 2026-08-19
 
 ### Hinzugefügt
 - **Notizen in Markdown, mit Leseansicht und Editor.** Der Notizinhalt wird als
