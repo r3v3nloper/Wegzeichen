@@ -1,0 +1,20 @@
+{
+  "name": "Wegzeichen – Notizen, Wege und Orte",
+  "short_name": "Wegzeichen",
+  "description": "Notizen, Wanderwege, Orte und Reisen an einem Ort",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d1a",
+  "theme_color": "#7c4dff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["travel", "productivity", "lifestyle"],
+  "lang": "de"
+}

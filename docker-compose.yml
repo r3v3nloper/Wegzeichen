@@ -1,0 +1,24 @@
+services:
+  wegzeichen:
+    build: .
+    container_name: wegzeichen
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - wegzeichen-data:/data
+    environment:
+      - PORT=3000
+      - DATA_DIR=/data
+      - JWT_SECRET=${JWT_SECRET:-bitte-aendern-langer-zufaelliger-string}
+      - CORS_ORIGIN=${CORS_ORIGIN:-}
+      # Voreinstellung passt für Betrieb hinter einem Reverse Proxy und schadet
+      # ohne Proxy nicht: ohne X-Forwarded-For bleibt es bei der echten Adresse
+      - TRUST_PROXY=${TRUST_PROXY:-1}
+      - NOMINATIM_USER_AGENT=${NOMINATIM_USER_AGENT:-}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@wegzeichen.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+
+volumes:
+  wegzeichen-data:
+    driver: local
