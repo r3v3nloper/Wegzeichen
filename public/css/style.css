@@ -119,15 +119,6 @@ input, select, textarea
   gap: 10px;
   flex-shrink: 0;
 }
-.logo-icon
-{
-  width: 38px; height: 38px;
-  background: linear-gradient(135deg, var(--accent), var(--cyan));
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; font-weight: 800; color: #fff;
-  flex-shrink: 0;
-}
 .logo-img
 {
   width: 38px; height: 38px;
@@ -311,10 +302,6 @@ input, select, textarea
 /* ===== RESPONSIVE BREAKPOINTS ===== */
 @media (max-width: 768px)
 {
-  .rec-head
-  {
-    flex-direction: column; align-items: flex-start; gap: 8px;
-  }
   .sidebar
   {
     transform: translateX(-100%);
@@ -368,10 +355,6 @@ input, select, textarea
 .auth-logo
 {
   text-align: center; margin-bottom: 28px;
-}
-.auth-logo .logo-icon
-{
-  width: 56px; height: 56px; font-size: 1.6rem; margin: 0 auto 10px;
 }
 .auth-logo h1
 {
@@ -604,23 +587,7 @@ select.form-input
   width: 18px; height: 18px; color: var(--accent);
 }
 
-/* ===== CARD GRID ===== */
-.card-grid
-{
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  gap: 14px;
-}
-@media (max-width: 768px)
-{
-  .card-grid
-  {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;
-  }
-}
-
-
-/* Toggle switch */
+/* ===== UMSCHALTER ===== */
 .toggle-switch
 {
   position: relative;
@@ -675,18 +642,6 @@ select.form-input
   background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(124,77,255,.25);
 }
 
-
-/* ===== PROGRESS BAR ===== */
-.progress-bar
-{
-  height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
-}
-.progress-fill
-{
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--cyan));
-  border-radius: 2px; transition: width .4s ease;
-}
 
 /* ===== STAR RATING ===== */
 .stars
@@ -759,10 +714,6 @@ select.form-input
 }
 
 /* ===== FILTER BAR ===== */
-.filter-bar
-{
-  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
-}
 .filter-input
 {
   flex: 1; min-width: 0;
@@ -781,18 +732,6 @@ select.form-input
 .view-toggle
 {
   display: flex; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden;
-}
-.view-btn
-{
-  padding: 8px 11px; border: none; background: none; color: var(--text2); cursor: pointer; transition: all .2s; display: flex; align-items: center;
-}
-.view-btn.active
-{
-  background: var(--accent); color: #fff;
-}
-.view-btn svg
-{
-  width: 16px; height: 16px;
 }
 
 /* ===== SEARCH ===== */
@@ -830,21 +769,6 @@ select.form-input
 .search-submit svg
 {
   width: 17px; height: 17px;
-}
-.type-toggle
-{
-  display: flex; gap: 7px; margin-bottom: 18px;
-}
-.type-btn
-{
-  padding: 7px 18px; border-radius: 20px;
-  border: 1px solid var(--border); background: var(--bg3);
-  color: var(--text2); cursor: pointer;
-  font-size: .83rem; font-weight: 500; transition: all .2s;
-}
-.type-btn.active
-{
-  background: var(--accent); border-color: var(--accent); color: #fff;
 }
 
 /* ===== MODAL ===== */
@@ -925,30 +849,6 @@ select.form-input
   padding: 14px 22px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px;
   flex-shrink: 0; background: var(--bg2);
-}
-
-/* ===== NUMBER INPUT ===== */
-.num-input-wrap
-{
-  display: flex; background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--r-sm); overflow: hidden;
-}
-.num-btn
-{
-  width: 34px; height: 38px;
-  background: var(--bg-hover); border: none; color: var(--text2);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background .2s; font-size: 1.1rem; flex-shrink: 0;
-}
-.num-btn:hover
-{
-  background: var(--accent); color: #fff;
-}
-.num-input
-{
-  flex: 1; background: none; border: none;
-  text-align: center; color: var(--text);
-  font-size: .9rem; padding: 8px 4px; outline: none; min-width: 50px;
 }
 
 /* ===== TOAST ===== */
@@ -1054,110 +954,10 @@ select.form-input
   font-size: .87rem; margin-bottom: 18px;
 }
 
-/* ===== PROFILE ===== */
-.profile-hero
-{
-  display: flex; align-items: center; gap: 18px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 22px; margin-bottom: 24px;
-}
-.profile-avatar
-{
-  width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--cyan));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; font-weight: 700; color: #fff; flex-shrink: 0;
-}
-.profile-name
-{
-  font-size: 1.4rem; font-weight: 700;
-}
-.profile-email
-{
-  color: var(--text2); font-size: .88rem;
-}
-.profile-joined
-{
-  color: var(--text3); font-size: .78rem; margin-top: 3px;
-}
-
-.stats-detail
-{
-  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-bottom: 16px;
-}
-.stats-detail h3
-{
-  font-size: .95rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
-}
-.stats-detail h3 svg
-{
-  width: 18px; height: 18px; color: var(--accent);
-}
-.stats-row
-{
-  display: flex; flex-direction: column; gap: 8px;
-}
-.stats-item
-{
-  display: flex; align-items: center; justify-content: space-between; font-size: .85rem;
-}
-.stats-item-label
-{
-  color: var(--text2); display: flex; align-items: center; gap: 7px;
-}
-.stats-item-val
-{
-  font-weight: 700; color: var(--text);
-}
-.stats-dot
-{
-  width: 8px; height: 8px; border-radius: 50%;
-}
-
 /* ===== MISC ===== */
 .text-muted
 {
   color: var(--text2);
-}
-.text-accent
-{
-  color: var(--accent);
-}
-.mt-3
-{
-  margin-top: 12px;
-}
-.mt-4
-{
-  margin-top: 16px;
-}
-.mb-4
-{
-  margin-bottom: 16px;
-}
-.gap-2
-{
-  gap: 8px;
-}
-.flex
-{
-  display: flex;
-}
-.flex-center
-{
-  display: flex; align-items: center;
-}
-.between
-{
-  justify-content: space-between;
-}
-.flex-1
-{
-  flex: 1;
-}
-.w-full
-{
-  width: 100%;
 }
 
 /* ===== PWA INSTALL BANNER ===== */
@@ -1211,16 +1011,6 @@ select.form-input
   }
 }
 
-/* ===== SEARCH RESULT PAGINATION ===== */
-.pagination
-{
-  display: flex; justify-content: center; gap: 8px; margin-top: 24px;
-}
-.pagination .btn
-{
-  min-width: 38px; padding: 7px 12px;
-}
-
 /* ===== ADMIN ===== */
 .admin-icon
 {
@@ -1264,11 +1054,6 @@ select.form-input
 {
   padding: 12px 16px; vertical-align: middle;
 }
-
-.admin-user-cell
-{
-  display: flex; align-items: center; gap: 10px;
-}
 .admin-username
 {
   font-weight: 600;
@@ -1309,10 +1094,6 @@ select.form-input
   .modal-foot
   {
     padding: 10px 12px; gap: 6px;
-  }
-  .modal-foot .btn-label
-  {
-    display: none;
   }
   .modal-foot .btn
   {
@@ -1716,12 +1497,6 @@ select.form-input
 {
   color: var(--text); overflow-wrap: anywhere;
 }
-.detail-text
-{
-  white-space: pre-wrap; line-height: 1.6; color: var(--text2);
-  font-size: .88rem; margin-top: 4px;
-}
-
 /* ===== EINSTELLUNGSKARTEN ===== */
 .setting-card
 {
@@ -2117,4 +1892,135 @@ select.form-input
   {
     font-size: 16px;
   }
+}
+
+/* ===== HILFS- UND ZUSTANDSKLASSEN =====
+   Diese Klassen ersetzen die früheren style-Attribute im Markup. Der Grund ist
+   nicht Kosmetik: mit Inline-Styles braucht die CSP `style-src 'unsafe-inline'`,
+   und das schwächt genau die Schranke, die gerendertes Markdown eingrenzen soll.
+   Bewusst wenige, benannt nach ihrer Wirkung. */
+
+/* Umgeschaltete Sichtbarkeit — im Markup gesetzt und per classList gewechselt */
+.is-hidden
+{
+  display: none;
+}
+/* Feld füllt die restliche Zeilenbreite; min-width verhindert das Überlaufen
+   in Flex-Zeilen, weil Eingabefelder eine Standardbreite mitbringen */
+.u-grow
+{
+  flex: 1; min-width: 0;
+}
+.u-shrink
+{
+  min-width: 0;
+}
+.u-full
+{
+  width: 100%;
+}
+.u-inline-row
+{
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ===== EINZELNE BAUSTEINE =====
+   Reihenfolge wie im Markup: Shell, Auth, Übersicht, Modals, Reisen. */
+.mobile-header-spacer
+{
+  width: 34px;
+}
+.auth-logo img
+{
+  width: 56px; height: 56px; margin: 0 auto 10px; display: block;
+}
+#auth-form-wrap .btn-full
+{
+  margin-top: 6px;
+}
+.install-emoji
+{
+  font-size: 1.4rem;
+}
+.stat-card
+{
+  cursor: pointer;
+}
+/* Verweise in einem Hinweisband sollen als Verweis erkennbar sein */
+.offline-banner a
+{
+  text-decoration: underline;
+}
+.section-head .text-muted
+{
+  font-size: .76rem;
+}
+.search-empty
+{
+  margin-bottom: 24px;
+}
+.setting-actions
+{
+  display: flex; gap: 6px;
+}
+/* Hinweis unter einem Feld statt darüber: oben Abstand, unten keiner */
+.lp-hint.hint-below
+{
+  margin: 8px 0 0;
+}
+#folder-new-form
+{
+  margin-bottom: 14px;
+}
+.confirm-text
+{
+  font-size: .87rem; line-height: 1.6;
+}
+.modal-intro
+{
+  font-size: .84rem; margin-bottom: 14px;
+}
+/* Die letzte Rubrik in einem Dialog braucht unten keinen Abstand mehr */
+.modal-body > .section:last-child
+{
+  margin-bottom: 0;
+}
+/* Der Umschalter „Als Favorit" ist ein Label mit Schalter und Text */
+.toggle-label
+{
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+}
+
+/* ===== ETAPPEN IM REISEFORMULAR ===== */
+.stage-row
+{
+  gap: 8px; margin-bottom: 8px;
+}
+.stage-location
+{
+  margin-bottom: 8px;
+}
+.stage-pin-row
+{
+  margin-top: 7px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.stage-name + .entry-chip
+{
+  margin-top: 3px;
+}
+
+/* ===== REISE-ANSICHT (Detaildialog) ===== */
+.detail-rating
+{
+  margin-bottom: 12px;
+}
+.detail-section
+{
+  margin: 20px 0 0;
+}
+
+/* Der Reisebericht im Detaildialog — gerendertes Markdown, kein Fließtext */
+.detail-report
+{
+  margin-top: 14px;
 }

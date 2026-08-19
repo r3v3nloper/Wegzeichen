@@ -17,13 +17,14 @@ export function openFolderManager(onChanged)
   openModal(`
     <div class="modal-head">
       <h2>Ordner</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
-      <form id="folder-new-form" class="lp-search" style="margin-bottom:14px">
+      <form id="folder-new-form" class="lp-search">
         <input class="form-input" name="name" type="text" maxlength="60" required
           placeholder="Neuer Ordner, z.B. Reisen"/>
-        <button type="submit" class="btn btn-primary">${IC.plus}</button>
+        <button type="submit" class="btn btn-primary"
+          aria-label="Ordner anlegen" title="Ordner anlegen">${IC.plus}</button>
       </form>
       <div class="form-error" id="folder-error"></div>
       <div id="folder-list"></div>
@@ -45,9 +46,9 @@ export function openFolderManager(onChanged)
         <span class="att-name">${esc(f.name)}</span>
         <span class="att-size">${plural(f.noteCount, 'Notiz', 'Notizen')}</span>
         <button class="btn btn-ghost btn-sm" data-rename="${f.id}"
-          title="Umbenennen">${IC.edit}</button>
+          title="Umbenennen" aria-label="Ordner umbenennen">${IC.edit}</button>
         <button class="btn btn-ghost btn-sm" data-remove="${f.id}"
-          title="Löschen">${IC.trash}</button>
+          title="Löschen" aria-label="Ordner löschen">${IC.trash}</button>
       </div>`).join('')}</div>`;
   }
 
@@ -79,10 +80,12 @@ export function openFolderManager(onChanged)
     const folder = folders.find(f => f.id === id);
     const row = $(`[data-folder-row="${id}"]`, ov);
     row.innerHTML = `${IC.folder}
-      <input class="form-input" id="rename-input" type="text" maxlength="60"
-        value="${esc(folder.name)}" style="flex:1;min-width:0"/>
-      <button class="btn btn-primary btn-sm" id="rename-save">${IC.check}</button>
-      <button class="btn btn-ghost btn-sm" id="rename-cancel">${IC.x}</button>`;
+      <input class="form-input u-grow" id="rename-input" type="text" maxlength="60"
+        value="${esc(folder.name)}"/>
+      <button class="btn btn-primary btn-sm" id="rename-save"
+        aria-label="Neuen Namen speichern" title="Speichern">${IC.check}</button>
+      <button class="btn btn-ghost btn-sm" id="rename-cancel"
+        aria-label="Umbenennen abbrechen" title="Abbrechen">${IC.x}</button>`;
 
     const input = $('#rename-input', ov);
     input.focus();

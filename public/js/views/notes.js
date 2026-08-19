@@ -4,9 +4,8 @@
    ===================================================== */
 import { IC } from '../icons.js';
 import { S } from '../state.js';
-import {
-  $, $$, esc, timeAgo, debounce, plural, renderEmptyState, toastError,
-} from '../dom.js';
+import { $, $$, esc, debounce, plural, renderEmptyState, toastError } from '../dom.js';
+import { timeAgo } from '../dates.js';
 import { API } from '../api.js';
 import { openNoteModal } from '../modals/note.js';
 import { openFolderManager } from '../modals/folders.js';
@@ -14,7 +13,7 @@ import { markdownToPlainText } from '../markdown.js';
 import {
   favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
 } from './entryActions.js';
-import { navigate } from '../router.js';
+import { navigate, refresh } from '../router.js';
 import { offlineBannerHtml } from './partials.js';
 
 export function renderNotes()
@@ -56,7 +55,8 @@ function folderBarHtml()
     ${S.noteFolders.map(f => chip(String(f.id), f.name, f.noteCount)).join('')}
     ${S.noteCounts.unfiled ? chip('none', 'Ohne Ordner', S.noteCounts.unfiled, ' muted') : ''}
     <button class="folder-chip folder-chip-action" id="btn-manage-folders"
-      title="Ordner anlegen, umbenennen, löschen">${IC.folderPlus}</button>
+      title="Ordner anlegen, umbenennen, löschen"
+      aria-label="Ordner verwalten">${IC.folderPlus}</button>
   </div>`;
 }
 
@@ -139,22 +139,22 @@ function cardHtml(note)
 
 export function bindNotes()
 {
-  const openNew = () => openNoteModal(null, () => navigate('notes'));
+  const openNew = () => openNoteModal(null, refresh);
   $('#btn-new-note')?.addEventListener('click', openNew);
   $('#btn-new-note-empty')?.addEventListener('click', openNew);
 
   $$('[data-folder]').forEach(btn => btn.addEventListener('click', () =>
   {
     S.noteFolder = btn.dataset.folder;
-    navigate('notes');
+    refresh();
   }));
   $('#btn-manage-folders')?.addEventListener('click', () =>
-    openFolderManager(() => navigate('notes')));
+    openFolderManager(refresh));
 
   $('#note-search').addEventListener('input', debounce(async e =>
   {
     S.noteQuery = e.target.value.trim();
-    await navigate('notes');
+    await refresh();
     // Fokus zurück ins Suchfeld, weil die View neu gerendert wurde
     const field = $('#note-search');
     field.focus();
@@ -173,7 +173,7 @@ export function bindNotes()
         ? ` und ${plural(note.attachmentCount, 'Anhang', 'Anhänge')}` : ''),
     }),
     deletedMessage: 'Notiz gelöscht',
-    onDone: () => navigate('notes'),
+    onDone: refresh,
   });
 }
 
@@ -191,7 +191,7 @@ async function openForEdit(id)
   {
     // Die Liste enthält keine Anhänge — die Detailabfrage liefert sie mit
     const note = await API.notes.get(id);
-    openNoteModal(note, () => navigate('notes'));
+    openNoteModal(note, refresh);
   }
   catch (err)
   {

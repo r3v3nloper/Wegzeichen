@@ -1,25 +1,37 @@
 /* Testet public/js/markdown.js — dieselbe Datei, die der Browser lädt.
 
-   Geprüft werden die Umformung zu reinem Text (Listenauszüge) und die
-   marked-Konfiguration. Das Säubern selbst braucht ein DOM: DOMPurify meldet
-   in Node `isSupported: false`. Statt dafür jsdom aufzunehmen, sichert der
-   letzte Block am Quelltext ab, dass renderMarkdown durch DOMPurify läuft und
-   die Positivliste kein Skript-Tag enthält. */
+   Das Säubern braucht ein DOM: DOMPurify bindet beim Laden das globale `window`
+   und meldet ohne eines `isSupported: false`, `sanitize()` gäbe es dann gar
+   nicht. Deshalb steht die jsdom-Umgebung hier **vor** dem Import des Moduls.
+
+   Damit prüft dieser Test das echte Verhalten und nicht mehr die Konfiguration
+   im Quelltext: was rein darf, kommt an, und was gefährlich ist, verschwindet. */
 const { test, describe, before } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
 const url = require('url');
-
-const SOURCE_FILE = path.join(__dirname, '..', '..', 'public', 'js', 'markdown.js');
-const SOURCE = fs.readFileSync(SOURCE_FILE, 'utf8');
+const { JSDOM } = require('jsdom');
 
 let md;
 
 before(async () =>
 {
-  md = await import(url.pathToFileURL(SOURCE_FILE).href);
+  const dom = new JSDOM('<!doctype html><html><body></body></html>');
+  global.window = dom.window;
+  global.document = dom.window.document;
+
+  const file = path.join(__dirname, '..', '..', 'public', 'js', 'markdown.js');
+  md = await import(url.pathToFileURL(file).href);
 });
+
+/* Rendert und hängt das Ergebnis in ein Element — so lassen sich Tags und
+   Attribute prüfen statt Zeichenketten zu vergleichen. */
+function render(markdown)
+{
+  const host = global.document.createElement('div');
+  host.innerHTML = md.renderMarkdown(markdown);
+  return host;
+}
 
 describe('markdownToPlainText', () =>
 {
@@ -105,20 +117,6 @@ describe('markdownToHtml', () =>
     assert.match(md.markdownToHtml('Erste Zeile\nZweite Zeile'), /<br\s*\/?>/);
   });
 
-  test('rendert GFM-Tabellen und Aufgabenlisten', () =>
-  {
-    assert.match(md.markdownToHtml('| A | B |\n| - | - |\n| 1 | 2 |'), /<table>/);
-    assert.match(md.markdownToHtml('- [x] erledigt'), /type="checkbox"/);
-  });
-
-  test('öffnet Verweise in einem neuen Tab ohne Zugriff auf die App', () =>
-  {
-    const html = md.markdownToHtml('[Weg](https://example.org)');
-
-    assert.match(html, /target="_blank"/);
-    assert.match(html, /rel="noopener noreferrer"/);
-  });
-
   test('liefert für leere Eingaben eine leere Zeichenkette', () =>
   {
     assert.equal(md.markdownToHtml(''), '');
@@ -126,52 +124,175 @@ describe('markdownToHtml', () =>
   });
 });
 
-describe('Säuberung', () =>
+describe('renderMarkdown — erlaubte Auszeichnung', () =>
 {
-  test('renderMarkdown gibt HTML nur über DOMPurify aus', () =>
+  test('rendert Überschriften, Hervorhebungen und Listen', () =>
   {
-    /* Notizinhalt ist Nutzertext. Fällt diese Zeile weg, landet rohes HTML aus
-       einer Notiz direkt im Dokument. */
-    assert.match(SOURCE, /DOMPurify\.sanitize\(html, SANITIZE_OPTIONS\)/);
+    const host = render('# Titel\n\n## Tag 1\n\n**fett** *kursiv* ~~weg~~ `code`\n\n- eins\n- zwei');
+
+    assert.equal(host.querySelector('h1').textContent, 'Titel');
+    assert.equal(host.querySelector('h2').textContent, 'Tag 1');
+    assert.ok(host.querySelector('strong'));
+    assert.ok(host.querySelector('em'));
+    assert.ok(host.querySelector('del'));
+    assert.ok(host.querySelector('code'));
+    assert.equal(host.querySelectorAll('ul > li').length, 2);
   });
 
-  test('die Positivliste enthält keine Tags, die Code ausführen können', () =>
+  test('rendert Tabellen, Zitate und Codeblöcke', () =>
   {
-    const list = SOURCE.match(/ALLOWED_TAGS: \[([\s\S]*?)\]/)[1];
-    const tags = [...list.matchAll(/'([^']+)'/g)].map(m => m[1]);
+    const host = render('| Tag | Ort |\n| --- | --- |\n| 1 | Eisenach |\n\n'
+      + '> Regen\n\n```bash\nnpm test\n```');
 
-    ['script', 'iframe', 'object', 'embed', 'style', 'form', 'svg'].forEach(tag =>
-      assert.equal(tags.includes(tag), false, `${tag} darf nicht erlaubt sein`));
+    assert.equal(host.querySelectorAll('table tbody tr').length, 1);
+    assert.equal(host.querySelector('th').textContent, 'Tag');
+    assert.equal(host.querySelector('blockquote').textContent.trim(), 'Regen');
+    assert.match(host.querySelector('pre code').textContent, /npm test/);
   });
 
-  test('erlaubte Adressen beschränken sich auf http, https, mailto und tel', () =>
+  test('Verweise öffnen in einem neuen Tab ohne Zugriff auf die App', () =>
   {
-    // Sonst wären javascript:-Verweise in einer Notiz möglich
-    const pattern = SOURCE.match(/ALLOWED_URI_REGEXP: (\/.*\/i),/)[1];
-    const allowed = new RegExp(pattern.slice(1, -2), 'i');
+    /* Diese beiden Attribute sind schon einmal still verschwunden, weil
+       ALLOWED_URI_REGEXP zu streng war: DOMPurify prüft damit *jeden*
+       Attributwert, nicht nur Adressen. */
+    const link = render('[Weg](https://example.org/weg)').querySelector('a');
 
-    ['https://example.org/weg', 'http://example.org', 'mailto:wanderer@example.org',
-      'tel:+4936912345'].forEach(uri =>
-      assert.ok(allowed.test(uri), `${uri} sollte erlaubt sein`));
-
-    ['javascript:alert(1)', 'ftp://example.org', 'xmpp:jemand@example.org'].forEach(uri =>
-      assert.equal(allowed.test(uri), false, `${uri} darf nicht erlaubt sein`));
+    assert.equal(link.getAttribute('href'), 'https://example.org/weg');
+    assert.equal(link.getAttribute('target'), '_blank');
+    assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
   });
 
-  test('schemalose Attributwerte kommen durch', () =>
+  test('Aufgabenlisten behalten ihre Kästchen und bleiben unveränderlich', () =>
   {
-    /* DOMPurify prüft mit ALLOWED_URI_REGEXP jeden Attributwert. Wird der
-       Ausdruck zu streng, verschwinden target="_blank" und type="checkbox"
-       still aus dem gerenderten Markdown. */
-    const pattern = SOURCE.match(/ALLOWED_URI_REGEXP: (\/.*\/i),/)[1];
-    const allowed = new RegExp(pattern.slice(1, -2), 'i');
+    const boxes = render('- [x] erledigt\n- [ ] offen').querySelectorAll('input');
 
-    ['_blank', 'noopener noreferrer', 'checkbox', '/uploads/karte.png'].forEach(value =>
-      assert.ok(allowed.test(value), `${value} sollte durchkommen`));
+    assert.equal(boxes.length, 2);
+    assert.equal(boxes[0].getAttribute('type'), 'checkbox');
+    assert.equal(boxes[0].hasAttribute('checked'), true);
+    assert.equal(boxes[1].hasAttribute('checked'), false);
+    // Angezeigt, nicht bedienbar — ein Häkchen würde niemand speichern
+    assert.equal(boxes[0].hasAttribute('disabled'), true);
   });
 
-  test('Datenattribute sind abgeschaltet', () =>
+  test('behält relative Ziele für Verweise und Bilder', () =>
   {
-    assert.match(SOURCE, /ALLOW_DATA_ATTR: false/);
+    const host = render('[Karte](/uploads/karte.png)\n\n![Bild](/uploads/bild.png)');
+
+    assert.equal(host.querySelector('a').getAttribute('href'), '/uploads/karte.png');
+    assert.equal(host.querySelector('img').getAttribute('src'), '/uploads/bild.png');
+  });
+
+  test('erlaubt mailto und tel', () =>
+  {
+    const host = render('[Mail](mailto:wanderer@example.org)\n\n[Anruf](tel:+4936912345)');
+    const links = host.querySelectorAll('a');
+
+    assert.equal(links[0].getAttribute('href'), 'mailto:wanderer@example.org');
+    assert.equal(links[1].getAttribute('href'), 'tel:+4936912345');
+  });
+
+  test('liefert für leere Eingaben eine leere Zeichenkette', () =>
+  {
+    assert.equal(md.renderMarkdown(''), '');
+    assert.equal(md.renderMarkdown(null), '');
+    assert.equal(md.renderMarkdown(undefined), '');
+  });
+});
+
+describe('renderMarkdown — Säuberung', () =>
+{
+  test('entfernt ein Skript samt seinem Inhalt', () =>
+  {
+    const host = render('Vorher\n\n<script>window.uebernommen = true;<\/script>\n\nNachher');
+
+    assert.equal(host.querySelectorAll('script').length, 0);
+    assert.equal(host.textContent.includes('uebernommen'), false);
+    assert.match(host.textContent, /Vorher/);
+    assert.match(host.textContent, /Nachher/);
+  });
+
+  test('entfernt Event-Attribute', () =>
+  {
+    const host = render('<img src="/bild.png" onerror="window.uebernommen = true">');
+
+    assert.equal(host.innerHTML.includes('onerror'), false);
+    assert.equal(host.querySelector('img')?.hasAttribute('onerror'), false);
+  });
+
+  test('nimmt einem javascript:-Verweis sein Ziel, behält aber den Text', () =>
+  {
+    const link = render('[Klick mich](javascript:window.uebernommen=1)').querySelector('a');
+
+    assert.equal(link.hasAttribute('href'), false);
+    assert.equal(link.textContent, 'Klick mich');
+  });
+
+  test('auch aus rohem HTML fällt javascript: heraus', () =>
+  {
+    const link = render('<a href="javascript:alert(1)">Roh</a>').querySelector('a');
+
+    assert.equal(link.hasAttribute('href'), false);
+    assert.equal(link.textContent, 'Roh');
+  });
+
+  test('lehnt Schemata ab, die eine Notiz nicht braucht', () =>
+  {
+    ['[FTP](ftp://example.org/datei)', '[Alt](vbscript:msgbox)',
+      '[Chat](xmpp:jemand@example.org)'].forEach(source =>
+      assert.equal(render(source).querySelector('a').hasAttribute('href'), false, source));
+  });
+
+  test('entfernt eingebettete Fremdinhalte und Formulare', () =>
+  {
+    const host = render([
+      '<iframe src="https://example.org"></iframe>',
+      '<object data="x.swf"></object>',
+      '<embed src="x.swf">',
+      '<form action="/weg"><input name="a"><button>Los</button></form>',
+      '<style>body { display: none }</style>',
+      '<svg><use href="#x"/></svg>',
+    ].join('\n\n'));
+
+    ['iframe', 'object', 'embed', 'form', 'style', 'svg'].forEach(tag =>
+      assert.equal(host.querySelectorAll(tag).length, 0, `${tag} darf nicht überleben`));
+  });
+
+  test('entfernt Datenattribute', () =>
+  {
+    const host = render('<p data-verfolgung="1">Text</p>');
+
+    assert.equal(host.innerHTML.includes('data-verfolgung'), false);
+    assert.equal(host.querySelector('p').textContent, 'Text');
+  });
+
+  test('lässt ein eingebettetes Bild als data:-URL stehen', () =>
+  {
+    /* DOMPurify erlaubt `data:` ausdrücklich für Bildquellen, unabhängig von
+       ALLOWED_URI_REGEXP — und das ist in Ordnung: ein Bild führt keinen Code
+       aus, und die CSP der App lässt `data:` für Bilder ohnehin zu. Dieser Test
+       hält die Entscheidung fest, damit sie nicht unbemerkt kippt. */
+    const img = render('![Punkt](data:image/gif;base64,R0lGODlhAQABAAAAACw=)').querySelector('img');
+
+    assert.match(img.getAttribute('src'), /^data:image\/gif;base64,/);
+  });
+
+  test('ein SVG in einer Bildquelle wird kein Element im Dokument', () =>
+  {
+    /* Als `<img src="data:image/svg+xml,…">` geladen führt ein Browser darin
+       kein Skript aus. Entscheidend ist, dass daraus kein echtes <svg> im
+       Dokument wird — dort wäre `onload` scharf. */
+    const host = render('<img src="data:image/svg+xml,<svg onload=alert(1)></svg>">');
+
+    assert.equal(host.querySelectorAll('svg').length, 0);
+    assert.equal(host.querySelector('img').hasAttribute('onload'), false);
+  });
+
+  test('behält den sichtbaren Text, wenn ein Tag entfernt wird', () =>
+  {
+    /* Ein entfernter Rahmen soll nicht den Inhalt mitnehmen — sonst wäre eine
+       Notiz nach dem Speichern plötzlich leer. */
+    const host = render('<div class="beliebig">Wichtiger Absatz</div>');
+
+    assert.match(host.textContent, /Wichtiger Absatz/);
   });
 });

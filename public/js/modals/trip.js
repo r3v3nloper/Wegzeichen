@@ -7,8 +7,12 @@ import { S, allSpots } from '../state.js';
 import { API } from '../api.js';
 import { $, $$, esc, starPickerHtml, bindStarPickers, toast, toastError } from '../dom.js';
 import { openModal, closeModal } from '../modal.js';
+import { markdownEditorHtml, bindMarkdownEditor } from '../markdown-editor.js';
 import { openLocationPicker } from './location-picker.js';
 import { countryOptionsHtml } from '../views/partials.js';
+
+// Muss zu MAX_SUMMARY in routes/trips.js passen
+const MAX_SUMMARY = 20000;
 
 export function openTripModal(trip, onSaved)
 {
@@ -27,7 +31,7 @@ export function openTripModal(trip, onSaved)
   openModal(`
     <div class="modal-head">
       <h2>${trip ? 'Reise bearbeiten' : 'Neue Reise'}</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
       <form id="trip-form">
@@ -53,7 +57,7 @@ export function openTripModal(trip, onSaved)
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Land</label>
-            <select class="form-select" name="country" style="width:100%">
+            <select class="form-select u-full" name="country">
               ${countryOptionsHtml(trip?.country || '')}
             </select>
           </div>
@@ -72,12 +76,17 @@ export function openTripModal(trip, onSaved)
 
         <div class="form-group">
           <label class="form-label">Wie es war</label>
-          <textarea class="form-input" name="summary" rows="5" maxlength="20000"
-            placeholder="Der Reisebericht">${esc(trip?.summary || '')}</textarea>
+          ${markdownEditorHtml({
+    name: 'summary',
+    value: trip?.summary || '',
+    rows: 12,
+    maxlength: MAX_SUMMARY,
+    placeholder: 'Der Reisebericht — Markdown ist erlaubt',
+  })}
         </div>
 
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+          <label class="form-label toggle-label">
             <span class="toggle-switch">
               <input type="checkbox" name="is_favorite" ${trip?.is_favorite ? 'checked' : ''}/>
               <span class="toggle-slider"></span>
@@ -89,7 +98,7 @@ export function openTripModal(trip, onSaved)
         <div class="form-error" id="trip-error"></div>
       </form>
 
-      <div class="section" style="margin-bottom:0">
+      <div class="section">
         <div class="section-head">
           <div class="section-title">${IC.route}<span>Route</span></div>
           <button class="btn btn-secondary btn-sm" id="btn-add-stage">
@@ -119,25 +128,25 @@ export function openTripModal(trip, onSaved)
     return `
       <div class="stage-item" data-stage="${index}">
         <div class="stage-main">
-          <div class="form-row" style="gap:8px;margin-bottom:8px">
-            <div style="display:flex;gap:6px;align-items:center">
-              <input class="form-input" data-field="day_from" type="number" min="1" max="3650"
-                value="${esc(stage.day_from)}" placeholder="Tag" style="min-width:0"/>
+          <div class="form-row stage-row">
+            <div class="u-inline-row">
+              <input class="form-input u-shrink" data-field="day_from" type="number" min="1" max="3650"
+                value="${esc(stage.day_from)}" placeholder="Tag"/>
               <span class="text-muted">bis</span>
-              <input class="form-input" data-field="day_to" type="number" min="1" max="3650"
-                value="${esc(stage.day_to)}" placeholder="Tag" style="min-width:0"/>
+              <input class="form-input u-shrink" data-field="day_to" type="number" min="1" max="3650"
+                value="${esc(stage.day_to)}" placeholder="Tag"/>
             </div>
-            <select class="form-select" data-field="spot_id" style="width:100%">
+            <select class="form-select u-full" data-field="spot_id">
               <option value="">— kein gespeicherter Ort —</option>
               ${spotOptionsHtml(stage.spot_id)}
             </select>
           </div>
-          <input class="form-input" data-field="location_name" type="text" required
+          <input class="form-input stage-location" data-field="location_name" type="text" required
             maxlength="200" value="${esc(stage.location_name)}"
-            placeholder="Wo? z.B. Rom" style="margin-bottom:8px"/>
+            placeholder="Wo? z.B. Rom"/>
           <textarea class="form-input" data-field="notes" rows="2" maxlength="2000"
             placeholder="Notiz zur Etappe">${esc(stage.notes)}</textarea>
-          <div style="margin-top:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="stage-pin-row">
             <button type="button" class="btn btn-ghost btn-sm" data-stage-pin="${index}">
               ${IC.pin}<span>${stage.lat === null ? 'Punkt setzen' : 'Punkt ändern'}</span></button>
             ${stage.lat === null ? '' : `<span class="lp-coord-chip">${IC.pin}
@@ -146,12 +155,12 @@ export function openTripModal(trip, onSaved)
         </div>
         <div class="stage-actions">
           <button type="button" class="btn btn-ghost btn-sm" data-stage-up="${index}"
-            ${index === 0 ? 'disabled' : ''} title="Nach oben">${IC.arrowUp}</button>
+            ${index === 0 ? 'disabled' : ''} title="Nach oben" aria-label="Etappe nach oben">${IC.arrowUp}</button>
           <button type="button" class="btn btn-ghost btn-sm" data-stage-down="${index}"
-            ${index === stages.length - 1 ? 'disabled' : ''} title="Nach unten">
+            ${index === stages.length - 1 ? 'disabled' : ''} title="Nach unten" aria-label="Etappe nach unten">
             ${IC.arrowDown}</button>
           <button type="button" class="btn btn-ghost btn-sm" data-stage-del="${index}"
-            title="Etappe entfernen">${IC.trash}</button>
+            title="Etappe entfernen" aria-label="Etappe entfernen">${IC.trash}</button>
         </div>
       </div>`;
   }
@@ -256,8 +265,12 @@ export function openTripModal(trip, onSaved)
 
   function bind(ov)
   {
+    // Der Reisebericht ist Markdown und braucht Platz — wie im Notiz-Editor
+    $('.modal', ov).classList.add('modal-wide');
+
     $$('[data-close]', ov).forEach(b => b.addEventListener('click', closeModal));
     bindStarPickers(ov);
+    bindMarkdownEditor(ov);
     refreshStages();
 
     $('#btn-add-stage', ov).addEventListener('click', () =>

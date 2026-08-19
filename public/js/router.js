@@ -1,6 +1,12 @@
 /* =====================================================
    Wegzeichen – router.js
    View-Navigation und zentrales Daten-Laden pro View
+
+   Laden und Zeichnen sind getrennt: `navigate()` wechselt die Ansicht mit
+   Ladeindikator, `refresh()` zeichnet die aktuelle neu, ohne sie vorher durch
+   einen Spinner zu ersetzen. Letzteres ist der Weg nach einer Änderung an einem
+   Eintrag — ein Stern soll die Liste nicht kurz verschwinden lassen und die
+   Scrollposition kosten.
    ===================================================== */
 import { S } from './state.js';
 import { $, renderEmptyState, toast } from './dom.js';
@@ -31,9 +37,28 @@ export async function navigate(view)
   }
   main.innerHTML = '<div class="loader-wrap"><div class="spinner"></div></div>';
 
+  await loadAndPaint(view, main);
+}
+
+/* Lädt die Daten der aktuellen Ansicht neu und zeichnet sie — ohne
+   Ladeindikator und ohne Ansichtswechsel. Für Änderungen, nach denen dieselbe
+   Ansicht stehen bleiben soll: Favorit umschalten, löschen, speichern. */
+export async function refresh()
+{
+  const main = $('#main-content');
+  if (!main)
+  {
+    return;
+  }
+  await loadAndPaint(S.view, main);
+}
+
+async function loadAndPaint(view, main)
+{
   try
   {
-    await renderView(view, main);
+    // Das Laden kann auf eine andere Ansicht umlenken, siehe fallbackTo()
+    paintView(await loadView(view), main);
   }
   catch (err)
   {
@@ -44,15 +69,25 @@ export async function navigate(view)
   }
 }
 
-async function renderView(view, main)
+/* Wechselt während des Ladens die Ansicht — etwa weil die geöffnete Notiz
+   inzwischen gelöscht ist. S.view muss mitwandern, sonst zeigt die Navigation
+   den falschen Eintrag als aktiv und ein spätere refresh() lädt ins Leere. */
+function fallbackTo(view)
+{
+  S.view = view;
+  updateNav();
+  return loadView(view);
+}
+
+/* Holt die Daten einer Ansicht in den State und liefert die Ansicht zurück,
+   die danach gezeichnet werden soll. */
+async function loadView(view)
 {
   const kind = SPOT_VIEWS[view];
   if (kind)
   {
     S.spots[kind] = await API.spots.getAll(kind);
-    main.innerHTML = renderSpots(kind);
-    bindSpots(kind);
-    return;
+    return view;
   }
 
   switch (view)
@@ -69,9 +104,7 @@ async function renderView(view, main)
       S.spots.trail = trails;
       S.spots.place = places;
       S.trips = trips;
-      main.innerHTML = renderHome();
-      bindHome();
-      return;
+      return 'home';
     }
 
     case 'notes':
@@ -85,19 +118,16 @@ async function renderView(view, main)
       S.noteCounts = { total: folderInfo.total, unfiled: folderInfo.unfiled };
 
       /* Zeigt der Filter auf einen Ordner, den es nicht mehr gibt — gelöscht
-         hier oder in einem anderen Gerät —, wäre die Liste dauerhaft leer.
+         hier oder auf einem anderen Gerät —, wäre die Liste dauerhaft leer.
          Dann auf „Alle" zurückfallen und neu laden. */
       const filtersMissingFolder = /^\d+$/.test(String(S.noteFolder))
         && !S.noteFolders.some(f => String(f.id) === String(S.noteFolder));
       if (filtersMissingFolder)
       {
         S.noteFolder = 'all';
-        return renderView('notes', main);
+        return loadView('notes');
       }
-
-      main.innerHTML = renderNotes();
-      bindNotes();
-      return;
+      return 'notes';
     }
 
     case 'note':
@@ -107,7 +137,7 @@ async function renderView(view, main)
          Ist sie inzwischen gelöscht, zurück zur Liste statt einer Fehlerseite. */
       if (!S.openNoteId)
       {
-        return backToNotes(main);
+        return fallbackTo('notes');
       }
       try
       {
@@ -116,12 +146,11 @@ async function renderView(view, main)
       catch (err)
       {
         toast(err.message, err.offline ? 'offline' : 'error');
-        return backToNotes(main);
+        S.openNoteId = null;
+        S.openNote = null;
+        return fallbackTo('notes');
       }
-
-      main.innerHTML = renderNote();
-      bindNote();
-      return;
+      return 'note';
     }
 
     case 'trips':
@@ -136,45 +165,47 @@ async function renderView(view, main)
       S.trips = trips;
       S.spots.trail = trails;
       S.spots.place = places;
-      main.innerHTML = renderTrips();
-      bindTrips();
-      return;
+      return 'trips';
     }
 
     case 'profile':
-      main.innerHTML = renderProfile();
-      bindProfile();
-      return;
+      return 'profile';
 
     case 'admin':
       if (!S.user?.is_admin)
       {
-        navigate('home');
-        return;
+        return fallbackTo('home');
       }
       S.adminUsers = await API.admin.getUsers();
-      main.innerHTML = renderAdmin();
-      bindAdmin();
-      return;
+      return 'admin';
 
     default:
-      navigate('home');
+      return fallbackTo('home');
   }
 }
 
-/* Verlässt die Leseansicht in Richtung Liste. Setzt auch S.view zurück, sonst
-   würde reload() weiter die verschwundene Notiz nachladen wollen. */
-function backToNotes(main)
+/* Zeichnet eine Ansicht aus dem State und verdrahtet sie. Ohne Serverzugriff —
+   alles, was gebraucht wird, hat loadView() vorher geholt. */
+function paintView(view, main)
 {
-  S.view = 'notes';
-  S.openNoteId = null;
-  S.openNote = null;
-  updateNav();
-  return renderView('notes', main);
-}
+  const kind = SPOT_VIEWS[view];
+  if (kind)
+  {
+    main.innerHTML = renderSpots(kind);
+    bindSpots(kind);
+    return;
+  }
 
-/* Lädt die aktuelle View neu — nach dem Speichern eines Eintrags */
-export function reload()
-{
-  return navigate(S.view);
+  const painters = {
+    home: [renderHome, bindHome],
+    notes: [renderNotes, bindNotes],
+    note: [renderNote, bindNote],
+    trips: [renderTrips, bindTrips],
+    profile: [renderProfile, bindProfile],
+    admin: [renderAdmin, bindAdmin],
+  };
+
+  const [render, bind] = painters[view] || painters.home;
+  main.innerHTML = render();
+  bind();
 }

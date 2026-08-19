@@ -55,6 +55,17 @@ describe('Content-Security-Policy', () =>
     assert.match(csp, /script-src 'self'/);
   });
 
+  test('erlaubt keine Inline-Styles', async () =>
+  {
+    /* Das Markup arbeitet mit Klassen statt style-Attributen. Kommt
+       'unsafe-inline' zurück, wäre ein eingeschmuggeltes style-Attribut aus einer
+       Notiz wieder wirksam — genau die Schranke, die das Säubern flankiert. */
+    const csp = (await headers()).get('content-security-policy');
+
+    assert.match(csp, /style-src [^;]*'self'/);
+    assert.equal(/style-src [^;]*'unsafe-inline'/.test(csp), false);
+  });
+
   test('erzwingt kein HTTPS-Upgrade', async () =>
   {
     const csp = (await headers()).get('content-security-policy');

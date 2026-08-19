@@ -214,6 +214,76 @@ describe('boolFlag', () =>
   });
 });
 
+describe('email', () =>
+{
+  test('trimmt und schreibt klein', () =>
+  {
+    /* Die Adresse ist der Anmeldeschlüssel — sie muss überall in derselben
+       Form gespeichert und verglichen werden. */
+    assert.equal(v.email('  Max.Mustermann@Example.ORG '), 'max.mustermann@example.org');
+  });
+
+  test('verlangt eine Angabe', () =>
+  {
+    assertRejects(() => v.email(''), /erforderlich/);
+    assertRejects(() => v.email(undefined), /erforderlich/);
+  });
+
+  test('lehnt Adressen ohne @ oder Punkt ab', () =>
+  {
+    ['kaputt', 'ohne@punkt', '@example.org', 'zwei @example.org', 'a@b.'].forEach(raw =>
+      assertRejects(() => v.email(raw), /Ungültige E-Mail/));
+  });
+});
+
+describe('username', () =>
+{
+  test('trimmt und liefert den Namen', () =>
+  {
+    assert.equal(v.username('  anna  '), 'anna');
+  });
+
+  test('lehnt zu kurze und zu lange Namen ab', () =>
+  {
+    assertRejects(() => v.username('ab'), /zwischen 3 und 50/);
+    assertRejects(() => v.username('x'.repeat(51)), /zwischen 3 und 50/);
+  });
+
+  test('verlangt eine Angabe', () =>
+  {
+    assertRejects(() => v.username('   '), /erforderlich/);
+  });
+});
+
+describe('password', () =>
+{
+  test('lässt Leerzeichen am Rand unangetastet', () =>
+  {
+    /* Getrimmt würde ein Passwort still zu einem anderen — der Nutzer käme
+       beim nächsten Anmelden nicht mehr herein. */
+    assert.equal(v.password('  geheim  '), '  geheim  ');
+  });
+
+  test('lehnt zu kurze und zu lange Passwörter ab', () =>
+  {
+    assertRejects(() => v.password('12345'), /zwischen 6 und 1000/);
+    assertRejects(() => v.password('x'.repeat(1001)), /zwischen 6 und 1000/);
+  });
+
+  test('benennt in der Meldung das gemeinte Feld', () =>
+  {
+    assertRejects(() => v.password('123', 'Neues Passwort'), /^Neues Passwort/);
+  });
+
+  test('verlangt eine Angabe, wertet aber Leerzeichen als Eingabe', () =>
+  {
+    assertRejects(() => v.password(''), /erforderlich/);
+    assertRejects(() => v.password(undefined), /erforderlich/);
+    // Sechs Leerzeichen sind ein (schlechtes) Passwort, aber keine leere Eingabe
+    assert.equal(v.password('      '), '      ');
+  });
+});
+
 describe('parseIdParam', () =>
 {
   test('akzeptiert positive Ganzzahlen', () =>

@@ -8,6 +8,7 @@ import { IC } from '../icons.js';
 import { API } from '../api.js';
 import { $, $$, esc, starPickerHtml, bindStarPickers, toast, toastError } from '../dom.js';
 import { openModal, closeModal } from '../modal.js';
+import { markdownEditorHtml, bindMarkdownEditor } from '../markdown-editor.js';
 import { openLocationPicker } from './location-picker.js';
 import { countryOptionsHtml } from '../views/partials.js';
 
@@ -15,6 +16,9 @@ const KIND_LABELS = {
   trail: { title: 'Wanderweg', icon: 'mountain' },
   place: { title: 'Ort', icon: 'pin' },
 };
+
+// Muss zu MAX_DESCRIPTION in routes/spots.js passen
+const MAX_DESCRIPTION = 5000;
 
 /* Vorschläge, keine Vorgabe — das Feld bleibt frei beschreibbar */
 const CATEGORY_SUGGESTIONS = ['Hotel', 'Ferienwohnung', 'Campingplatz', 'Wald', 'See',
@@ -45,7 +49,7 @@ export function openSpotModal(kind, spot, onSaved)
   openModal(`
     <div class="modal-head">
       <h2>${isNew ? `Neuer ${labels.title}` : `${labels.title} bearbeiten`}</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
       <form id="spot-form">
@@ -68,7 +72,7 @@ export function openSpotModal(kind, spot, onSaved)
               ${IC.pin}<span>Ort</span>
             </label>
           </div>
-          <p class="lp-hint" style="margin:6px 0 0">
+          <p class="lp-hint hint-below">
             Beides ist möglich — eine Schlucht fährt man an und läuft sie ab.</p>
         </div>
 
@@ -83,7 +87,7 @@ export function openSpotModal(kind, spot, onSaved)
           <input type="hidden" name="status" value="${spot?.status || 'wishlist'}"/>
         </div>
 
-        <div id="visited-fields" style="display:${spot?.status === 'visited' ? 'block' : 'none'}">
+        <div id="visited-fields"${spot?.status === 'visited' ? '' : ' class="is-hidden"'}>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Bewertung</label>
@@ -97,12 +101,12 @@ export function openSpotModal(kind, spot, onSaved)
           </div>
         </div>
 
-        <div id="planned-fields" style="display:${spot?.status === 'visited' ? 'none' : 'block'}">
+        <div id="planned-fields"${spot?.status === 'visited' ? ' class="is-hidden"' : ''}>
           <div class="form-group">
             <label class="form-label">Geplant für</label>
             <input class="form-input" name="planned_at" type="date"
               value="${esc(spot?.planned_at || '')}"/>
-            <p class="lp-hint" style="margin:6px 0 0">
+            <p class="lp-hint hint-below">
               Optional. Steht dann auf der Übersicht unter „Nächste Termine".</p>
           </div>
         </div>
@@ -119,7 +123,7 @@ export function openSpotModal(kind, spot, onSaved)
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Land</label>
-            <select class="form-select" name="country" style="width:100%">
+            <select class="form-select u-full" name="country">
               ${countryOptionsHtml(spot?.country || '')}
             </select>
           </div>
@@ -136,10 +140,10 @@ export function openSpotModal(kind, spot, onSaved)
             value="${esc(spot?.address || '')}" placeholder="Optional"/>
         </div>
 
-        <div id="place-fields" style="display:${kinds.is_place ? 'block' : 'none'}">
+        <div id="place-fields"${kinds.is_place ? '' : ' class="is-hidden"'}>
           ${placeFieldsHtml(spot)}
         </div>
-        <div id="trail-fields" style="display:${kinds.is_trail ? 'block' : 'none'}">
+        <div id="trail-fields"${kinds.is_trail ? '' : ' class="is-hidden"'}>
           ${trailFieldsHtml(spot)}
         </div>
 
@@ -152,12 +156,17 @@ export function openSpotModal(kind, spot, onSaved)
 
         <div class="form-group">
           <label class="form-label">Notizen</label>
-          <textarea class="form-input" name="description" rows="4" maxlength="5000"
-            placeholder="Was du dir merken willst">${esc(spot?.description || '')}</textarea>
+          ${markdownEditorHtml({
+    name: 'description',
+    value: spot?.description || '',
+    rows: 8,
+    maxlength: MAX_DESCRIPTION,
+    placeholder: 'Was du dir merken willst — Markdown ist erlaubt',
+  })}
         </div>
 
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+          <label class="form-label toggle-label">
             <span class="toggle-switch">
               <input type="checkbox" name="is_favorite" ${spot?.is_favorite ? 'checked' : ''}/>
               <span class="toggle-slider"></span>
@@ -187,8 +196,12 @@ export function openSpotModal(kind, spot, onSaved)
 
   function bind(ov)
   {
+    // Die Notizen sind Markdown und brauchen Platz — wie im Notiz-Editor
+    $('.modal', ov).classList.add('modal-wide');
+
     $$('[data-close]', ov).forEach(b => b.addEventListener('click', closeModal));
     bindStarPickers(ov);
+    bindMarkdownEditor(ov);
 
     /* Die Aspekt-Haken schalten die jeweiligen Feldgruppen ein und aus.
        Mindestens einer muss gesetzt bleiben, sonst wäre der Eintrag in keiner
@@ -203,8 +216,8 @@ export function openSpotModal(kind, spot, onSaved)
         changed.checked = true;
         toast('Mindestens eines von Wanderweg oder Ort muss gesetzt sein', 'warning');
       }
-      $('#trail-fields', ov).style.display = trailBox.checked ? 'block' : 'none';
-      $('#place-fields', ov).style.display = placeBox.checked ? 'block' : 'none';
+      $('#trail-fields', ov).classList.toggle('is-hidden', !trailBox.checked);
+      $('#place-fields', ov).classList.toggle('is-hidden', !placeBox.checked);
     };
 
     trailBox.addEventListener('change', () => syncKindFields(trailBox));
@@ -219,8 +232,8 @@ export function openSpotModal(kind, spot, onSaved)
         const status = tab.dataset.status;
         const visited = status === 'visited';
         ov.querySelector('input[name=status]').value = status;
-        $('#visited-fields', ov).style.display = visited ? 'block' : 'none';
-        $('#planned-fields', ov).style.display = visited ? 'none' : 'block';
+        $('#visited-fields', ov).classList.toggle('is-hidden', !visited);
+        $('#planned-fields', ov).classList.toggle('is-hidden', visited);
       });
     });
 
@@ -355,16 +368,16 @@ function trailFieldsHtml(spot)
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Dauer</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input class="form-input" name="duration_h" type="number" min="0" max="999"
-            value="${hours}" placeholder="Std." style="min-width:0"/>
-          <input class="form-input" name="duration_m" type="number" min="0" max="59"
-            value="${minutes}" placeholder="Min." style="min-width:0"/>
+        <div class="u-inline-row">
+          <input class="form-input u-shrink" name="duration_h" type="number" min="0" max="999"
+            value="${hours}" placeholder="Std."/>
+          <input class="form-input u-shrink" name="duration_m" type="number" min="0" max="59"
+            value="${minutes}" placeholder="Min."/>
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Schwierigkeit</label>
-        <select class="form-select" name="difficulty" style="width:100%">
+        <select class="form-select u-full" name="difficulty">
           <option value="">— keine Angabe —</option>
           ${DIFFICULTIES.map(d => `<option value="${d}"${spot?.difficulty === d
     ? ' selected' : ''}>${d.charAt(0).toUpperCase()}${d.slice(1)}</option>`).join('')}

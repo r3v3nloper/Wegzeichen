@@ -47,6 +47,5 @@ function authMiddleware(req, res, next)
   }
 }
 
-authMiddleware.JWT_SECRET = JWT_SECRET;
 authMiddleware.signToken = signToken;
 module.exports = authMiddleware;

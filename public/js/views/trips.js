@@ -9,8 +9,9 @@ import { formatDate, inclusiveDays } from '../dates.js';
 import { API } from '../api.js';
 import { openModal, closeModal } from '../modal.js';
 import { openTripModal } from '../modals/trip.js';
-import { navigate } from '../router.js';
+import { refresh } from '../router.js';
 import { mapsSearchUrl } from '../geo.js';
+import { markdownToPlainText, renderMarkdown } from '../markdown.js';
 import { offlineBannerHtml } from './partials.js';
 import {
   favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
@@ -54,6 +55,7 @@ export function renderTrips()
 function cardHtml(trip)
 {
   const days = tripDurationDays(trip);
+  const excerpt = markdownToPlainText(trip.summary);
 
   return `
     <div class="entry-card${trip.is_favorite ? ' is-favorite' : ''}">
@@ -62,7 +64,7 @@ function cardHtml(trip)
           <span class="entry-title">${esc(trip.title)}</span>
           ${trip.rating ? starsHtml(trip.rating) : ''}
         </div>
-        ${trip.summary ? `<div class="entry-body">${esc(trip.summary)}</div>` : ''}
+        ${excerpt ? `<div class="entry-body">${esc(excerpt)}</div>` : ''}
         <div class="entry-meta">
           ${trip.country ? `<span class="entry-chip">${IC.globe}
             ${esc(countryName(trip.country))}</span>` : ''}
@@ -78,7 +80,8 @@ function cardHtml(trip)
       <div class="entry-actions">
         ${favButtonHtml(trip)}
         ${trip.photos_url ? `<a class="btn btn-ghost btn-sm" href="${esc(trip.photos_url)}"
-          target="_blank" rel="noopener" title="Bilder in der Cloud öffnen">
+          target="_blank" rel="noopener" title="Bilder in der Cloud öffnen"
+          aria-label="Bilder in der Cloud öffnen">
           ${IC.external}</a>` : ''}
         ${editButtonHtml(trip.id)}
         ${deleteButtonHtml(trip.id)}
@@ -88,7 +91,7 @@ function cardHtml(trip)
 
 export function bindTrips()
 {
-  const openNew = () => openTripModal(null, () => navigate('trips'));
+  const openNew = () => openTripModal(null, refresh);
   $('#btn-new-trip')?.addEventListener('click', openNew);
   $('#btn-new-trip-empty')?.addEventListener('click', openNew);
 
@@ -104,7 +107,7 @@ export function bindTrips()
         ? ` und ${plural(trip.stageCount, 'Etappe', 'Etappen')}` : ''),
     }),
     deletedMessage: 'Reise gelöscht',
-    onDone: () => navigate('trips'),
+    onDone: refresh,
   });
 }
 
@@ -117,7 +120,7 @@ async function openForEdit(id)
 {
   try
   {
-    openTripModal(await loadTrip(id), () => navigate('trips'));
+    openTripModal(await loadTrip(id), refresh);
   }
   catch (err)
   {
@@ -144,10 +147,10 @@ async function openDetail(id)
   openModal(`
     <div class="modal-head">
       <h2>${esc(trip.title)}</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
-      ${trip.rating ? `<div style="margin-bottom:12px">${starsHtml(trip.rating, false)}</div>` : ''}
+      ${trip.rating ? `<div class="detail-rating">${starsHtml(trip.rating, false)}</div>` : ''}
 
       <dl class="detail-grid">
         ${trip.country ? `<dt>Land</dt><dd>${esc(countryName(trip.country))}</dd>` : ''}
@@ -158,10 +161,10 @@ async function openDetail(id)
           target="_blank" rel="noopener">In der Cloud öffnen</a></dd>` : ''}
       </dl>
 
-      ${trip.summary ? `<div class="detail-text">${esc(trip.summary)}</div>` : ''}
+      ${trip.summary ? `<div class="md-body detail-report">${renderMarkdown(trip.summary)}</div>` : ''}
 
       ${trip.stages.length ? `
-        <div class="section" style="margin:20px 0 0">
+        <div class="section detail-section">
           <div class="section-head">
             <div class="section-title">${IC.route}<span>Route</span></div>
           </div>
@@ -177,7 +180,7 @@ async function openDetail(id)
     $('#detail-edit', ov).addEventListener('click', () =>
     {
       closeModal();
-      openTripModal(trip, () => navigate('trips'));
+      openTripModal(trip, refresh);
     });
   });
 }
@@ -191,13 +194,14 @@ function stageHtml(stage)
       <div class="stage-day">${dayLabel(stage)}</div>
       <div class="stage-main">
         <div class="stage-name">${esc(stage.location_name)}</div>
-        ${stage.spot_name ? `<div class="entry-chip" style="margin-top:3px">
+        ${stage.spot_name ? `<div class="entry-chip">
           ${IC[stage.spot_is_trail ? 'mountain' : 'pin']}
           ${esc(stage.spot_name)}</div>` : ''}
         ${stage.notes ? `<div class="stage-notes">${esc(stage.notes)}</div>` : ''}
       </div>
       ${mapUrl ? `<a class="btn btn-ghost btn-sm" href="${esc(mapUrl)}" target="_blank"
-        rel="noopener" title="In Google Maps ansehen">${IC.navigate}</a>` : ''}
+        rel="noopener" title="In Google Maps ansehen"
+        aria-label="In Google Maps ansehen">${IC.navigate}</a>` : ''}
     </div>`;
 }
 

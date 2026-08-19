@@ -152,3 +152,116 @@ describe('isPast', () =>
     assert.equal(dates.isPast(null, '2026-06-14'), false);
   });
 });
+
+/* ── Zeitpunkte ─────────────────────────────────────────────────────────────
+   Der Fehler, um den es hier geht: SQLite schreibt „JJJJ-MM-TT HH:MM:SS" in UTC,
+   aber ohne Kennzeichen. `new Date()` liest das als lokale Zeit — eine frisch
+   gespeicherte Notiz war in Berlin damit sofort „vor 2 Std." alt.
+
+   Die Tests laufen absichtlich unabhängig von der Zeitzone des Rechners: sie
+   vergleichen gegen `toISOString()` beziehungsweise bauen den Zeitstempel aus
+   dem aktuellen Moment. */
+
+/* Zeitstempel in der Form, die SQLite liefert */
+function sqliteTimestamp(date)
+{
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+describe('parseTimestamp', () =>
+{
+  test('liest die Form von SQLite als UTC', () =>
+  {
+    const parsed = dates.parseTimestamp('2026-08-19 07:00:00');
+
+    assert.equal(parsed.toISOString(), '2026-08-19T07:00:00.000Z');
+  });
+
+  test('nimmt auch T als Trenner und Sekundenbruchteile', () =>
+  {
+    assert.equal(dates.parseTimestamp('2026-08-19T07:00:00').toISOString(),
+      '2026-08-19T07:00:00.000Z');
+    assert.equal(dates.parseTimestamp('2026-08-19 07:00:00.250').toISOString(),
+      '2026-08-19T07:00:00.250Z');
+    assert.equal(dates.parseTimestamp('2026-08-19 07:00').toISOString(),
+      '2026-08-19T07:00:00.000Z');
+  });
+
+  test('lässt einen Zeitstempel mit Zone unverändert', () =>
+  {
+    /* Wer schon eine Zone mitschickt, meint sie auch — hier darf nichts
+       nachträglich zu UTC erklärt werden. */
+    assert.equal(dates.parseTimestamp('2026-08-19T07:00:00Z').toISOString(),
+      '2026-08-19T07:00:00.000Z');
+    assert.equal(dates.parseTimestamp('2026-08-19T09:00:00+02:00').toISOString(),
+      '2026-08-19T07:00:00.000Z');
+  });
+
+  test('nimmt ein Date-Objekt unverändert an', () =>
+  {
+    const date = new Date('2026-08-19T07:00:00Z');
+
+    assert.equal(dates.parseTimestamp(date), date);
+  });
+
+  test('liefert null für Leerwerte und Unsinn', () =>
+  {
+    [null, undefined, '', '   ', 'irgendwas', '2026-13-45 99:99:99']
+      .forEach(raw => assert.equal(dates.parseTimestamp(raw), null, String(raw)));
+  });
+});
+
+describe('timeAgo', () =>
+{
+  test('ein gerade gespeicherter Eintrag ist „Gerade eben"', () =>
+  {
+    /* Genau der gemeldete Fehler: vorher stand hier „vor 2 Std." — und zwar
+       abhängig von der Zeitzone, in Berlin im Sommer zwei Stunden. */
+    assert.equal(dates.timeAgo(sqliteTimestamp(new Date())), 'Gerade eben');
+  });
+
+  test('zählt Minuten, Stunden und Tage', () =>
+  {
+    const vor = minutes => sqliteTimestamp(new Date(Date.now() - minutes * 60000));
+
+    assert.equal(dates.timeAgo(vor(30)), 'vor 30 Min.');
+    assert.equal(dates.timeAgo(vor(3 * 60)), 'vor 3 Std.');
+    assert.equal(dates.timeAgo(vor(2 * 24 * 60)), 'vor 2 Tagen');
+  });
+
+  test('zeigt ab einer Woche das Datum, geschrieben wie formatDate', () =>
+  {
+    const vor30Tagen = new Date(Date.now() - 30 * 86400000);
+
+    const label = dates.timeAgo(sqliteTimestamp(vor30Tagen));
+
+    // Zweistellig wie überall sonst in der App: 20.07.2026, nicht 20.7.2026
+    assert.match(label, /^\d{2}\.\d{2}\.\d{4}$/);
+  });
+
+  test('nennt beim Datum den lokalen Kalendertag', () =>
+  {
+    /* Ein Zeitpunkt kurz nach lokaler Mitternacht gehört zum neuen Tag — auch
+       wenn er in UTC noch zum vorherigen zählt. */
+    const now = new Date();
+    const lokal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 30);
+    const vorLangem = new Date(lokal.getTime() - 30 * 86400000);
+    const erwartet = `${String(vorLangem.getDate()).padStart(2, '0')}.`
+      + `${String(vorLangem.getMonth() + 1).padStart(2, '0')}.${vorLangem.getFullYear()}`;
+
+    assert.equal(dates.timeAgo(sqliteTimestamp(vorLangem)), erwartet);
+  });
+
+  test('eine Uhrzeit knapp in der Zukunft gilt als jetzt', () =>
+  {
+    // Kleine Abweichungen zwischen Server- und Geräteuhr sollen nichts kaputtmachen
+    assert.equal(dates.timeAgo(sqliteTimestamp(new Date(Date.now() + 5000))), 'Gerade eben');
+  });
+
+  test('liefert Leerstring ohne Zeitstempel', () =>
+  {
+    assert.equal(dates.timeAgo(null), '');
+    assert.equal(dates.timeAgo(''), '');
+    assert.equal(dates.timeAgo('kaputt'), '');
+  });
+});

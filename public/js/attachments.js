@@ -22,9 +22,9 @@ export function attachmentListHtml(attachments, { withRemove = false } = {})
       <span class="att-name" title="${esc(a.original_name)}">${esc(a.original_name)}</span>
       <span class="att-size">${formatBytes(a.size_bytes)}</span>
       <button type="button" class="btn btn-ghost btn-sm" data-att-open="${a.id}"
-        title="Öffnen">${IC.download}</button>
+        title="Öffnen" aria-label="Anhang öffnen">${IC.download}</button>
       ${withRemove ? `<button type="button" class="btn btn-ghost btn-sm" data-att-del="${a.id}"
-        title="Entfernen">${IC.trash}</button>` : ''}
+        title="Entfernen" aria-label="Anhang entfernen">${IC.trash}</button>` : ''}
     </div>`).join('')}</div>`;
 }
 

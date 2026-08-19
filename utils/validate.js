@@ -199,6 +199,62 @@ function boolFlag(raw)
   return raw === true || raw === 1 || raw === '1' || raw === 'true' ? 1 : 0;
 }
 
+/* ── Anmeldedaten ──────────────────────────────────────────────────────────
+   Die Grenzen stehen hier und nicht in der Route, damit Registrierung und
+   Profiländerung nicht auseinanderlaufen können. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_LENGTH = { min: 3, max: 50 };
+const PASSWORD_LENGTH = { min: 6, max: 1000 };
+
+/* Liefert die Adresse in Kleinschreibung zurück — sie ist der Anmeldeschlüssel
+   und muss überall in derselben Form gespeichert und verglichen werden. */
+function email(raw)
+{
+  if (isBlank(raw))
+  {
+    fail('E-Mail-Adresse ist erforderlich');
+  }
+  const text = String(raw).trim().toLowerCase();
+  if (!EMAIL_RE.test(text))
+  {
+    fail('Ungültige E-Mail-Adresse');
+  }
+  return text;
+}
+
+function username(raw)
+{
+  if (isBlank(raw))
+  {
+    fail('Benutzername ist erforderlich');
+  }
+  const text = String(raw).trim();
+  if (text.length < USERNAME_LENGTH.min || text.length > USERNAME_LENGTH.max)
+  {
+    fail(`Benutzername muss zwischen ${USERNAME_LENGTH.min} und `
+      + `${USERNAME_LENGTH.max} Zeichen lang sein`);
+  }
+  return text;
+}
+
+/* `label` unterscheidet „Passwort" bei der Anmeldung von „Neues Passwort" beim
+   Wechsel. Bewusst nicht über isBlank und ohne trim: Leerzeichen am Rand sind
+   Teil des Passworts und dürfen weder verschwinden noch als „leer" gelten. */
+function password(raw, label = 'Passwort')
+{
+  if (raw === undefined || raw === null || raw === '')
+  {
+    fail(`${label} ist erforderlich`);
+  }
+  const text = String(raw);
+  if (text.length < PASSWORD_LENGTH.min || text.length > PASSWORD_LENGTH.max)
+  {
+    fail(`${label} muss zwischen ${PASSWORD_LENGTH.min} und `
+      + `${PASSWORD_LENGTH.max} Zeichen lang sein`);
+  }
+  return text;
+}
+
 /* Für :id-Parameter — liefert null statt zu werfen, damit Routen mit 404
    antworten können statt mit 400 */
 function parseIdParam(raw)
@@ -222,5 +278,8 @@ module.exports = {
   enumValue,
   optionalUrl,
   boolFlag,
+  email,
+  username,
+  password,
   parseIdParam,
 };

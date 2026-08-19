@@ -16,7 +16,7 @@ const FALLBACK_CENTER = [51.1657, 10.4515];
 const FALLBACK_ZOOM = 5;
 const POINT_ZOOM = 13;
 
-export function isMapAvailable()
+function isMapAvailable()
 {
   return typeof window.L !== 'undefined';
 }

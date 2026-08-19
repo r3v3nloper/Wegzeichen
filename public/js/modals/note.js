@@ -54,7 +54,7 @@ export function openNoteModal(note, onSaved)
   openModal(`
     <div class="modal-head">
       <h2>${noteId ? 'Notiz bearbeiten' : 'Neue Notiz'}</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
       <form id="note-form">
@@ -66,12 +66,11 @@ export function openNoteModal(note, onSaved)
         <div class="form-group">
           <label class="form-label">Ordner</label>
           <div class="lp-search">
-            <select class="form-select" name="folder_id" id="note-folder"
-              style="flex:1;min-width:0">
+            <select class="form-select u-grow" name="folder_id" id="note-folder">
               ${folderOptionsHtml(initialFolderId())}
             </select>
             <button type="button" class="btn btn-ghost" id="btn-note-folders"
-              title="Ordner verwalten">${IC.folderPlus}</button>
+              title="Ordner verwalten" aria-label="Ordner verwalten">${IC.folderPlus}</button>
           </div>
         </div>
 
@@ -80,7 +79,7 @@ export function openNoteModal(note, onSaved)
           ${editorHtml}
         </div>
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+          <label class="form-label toggle-label">
             <span class="toggle-switch">
               <input type="checkbox" name="is_favorite" ${note?.is_favorite ? 'checked' : ''}/>
               <span class="toggle-slider"></span>
@@ -91,7 +90,7 @@ export function openNoteModal(note, onSaved)
         <div class="form-error" id="note-error"></div>
       </form>
 
-      <div class="section" style="margin-bottom:0">
+      <div class="section">
         <div class="section-head">
           <div class="section-title">${IC.paperclip}<span>Anhänge</span></div>
         </div>
@@ -117,7 +116,7 @@ export function openNoteModal(note, onSaved)
         ${IC.plus}<span>Datei wählen oder hierher ziehen</span>
         <input type="file" id="att-input" multiple accept="${ACCEPT}"/>
       </label>
-      <p class="lp-hint" style="margin:8px 0 0">
+      <p class="lp-hint hint-below">
         PDF, Word, ODT, Text, Markdown und Bilder — max. 10 MB je Datei,
         5 Dateien pro Notiz.</p>`;
   }

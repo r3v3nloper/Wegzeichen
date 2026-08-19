@@ -298,4 +298,18 @@ describe('Adminrechte', () =>
 
     assert.equal(res.status, 403);
   });
+
+  test('ein normaler Nutzer kann kein fremdes Passwort setzen', async () =>
+  {
+    const res = await srv.req('PUT', `/api/admin/users/${alice.user.id}/password`,
+      { password: 'uebernahmeVersuch1' }, bob.token);
+
+    assert.equal(res.status, 403);
+
+    // Alices altes Passwort muss weiter gelten
+    const login = await srv.req('POST', '/api/auth/login', {
+      email: alice.user.email, password: 'geheim123',
+    });
+    assert.equal(login.status, 200);
+  });
 });

@@ -45,6 +45,71 @@ describe('Registrierung und Login', () =>
     assert.equal(res.status, 400);
   });
 
+  test('lehnt einen zu kurzen Benutzernamen ab', async () =>
+  {
+    const res = await srv.req('POST', '/api/auth/register', {
+      username: 'ab', email: 'kurzname@example.com', password: 'geheim123',
+    });
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /Benutzername/);
+  });
+
+  test('lehnt eine unsinnige E-Mail-Adresse ab', async () =>
+  {
+    const res = await srv.req('POST', '/api/auth/register', {
+      username: 'kaputtemail', email: 'keine-adresse', password: 'geheim123',
+    });
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /E-Mail/);
+  });
+
+  test('lehnt einen doppelten Benutzernamen ab', async () =>
+  {
+    await registerUser(srv, 'doppelt');
+    const res = await srv.req('POST', '/api/auth/register', {
+      username: 'userdoppelt', email: 'andere@example.com', password: 'geheim123',
+    });
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /Benutzername/);
+  });
+
+  test('speichert die E-Mail in Kleinschreibung', async () =>
+  {
+    /* Sonst hinge die Anmeldung davon ab, wie der Nutzer seine Adresse tippt. */
+    const created = await srv.req('POST', '/api/auth/register', {
+      username: 'grossklein', email: '  GrossKlein@Example.COM ', password: 'geheim123',
+    });
+    assert.equal(created.data.user.email, 'grossklein@example.com');
+
+    const res = await srv.req('POST', '/api/auth/login', {
+      email: 'GROSSKLEIN@example.com', password: 'geheim123',
+    });
+
+    assert.equal(res.status, 200);
+  });
+
+  test('behält Leerzeichen im Passwort', async () =>
+  {
+    /* Ein getrimmtes Passwort wäre ein anderes — der Nutzer käme beim nächsten
+       Anmelden nicht mehr herein. */
+    await srv.req('POST', '/api/auth/register', {
+      username: 'leerzeichen', email: 'leerzeichen@example.com', password: '  geheim123  ',
+    });
+
+    const withSpaces = await srv.req('POST', '/api/auth/login', {
+      email: 'leerzeichen@example.com', password: '  geheim123  ',
+    });
+    const trimmed = await srv.req('POST', '/api/auth/login', {
+      email: 'leerzeichen@example.com', password: 'geheim123',
+    });
+
+    assert.equal(withSpaces.status, 200);
+    assert.equal(trimmed.status, 401);
+  });
+
   test('meldet mit korrekten Daten an', async () =>
   {
     await registerUser(srv, 'auth4');
@@ -120,6 +185,85 @@ describe('Passwortwechsel', () =>
     }, token);
 
     assert.equal(res.status, 400);
+  });
+});
+
+describe('Profil ändern', () =>
+{
+  test('ändert Benutzername und E-Mail', async () =>
+  {
+    const { token } = await registerUser(srv, 'profil1');
+
+    const res = await srv.req('PUT', '/api/auth/profile', {
+      username: 'neuerName', email: 'neu1@example.com',
+    }, token);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.data.user.username, 'neuerName');
+    assert.equal(res.data.user.email, 'neu1@example.com');
+    // Ohne Passwortwechsel bleibt der bestehende Token gültig
+    assert.equal(res.data.token, undefined);
+  });
+
+  test('nimmt unveränderte Werte widerspruchslos an', async () =>
+  {
+    /* Das Formular schickt immer alle Felder mit. Würden unveränderte Werte in
+       das UPDATE wandern, scheiterte es am UNIQUE-Index auf dem eigenen Namen. */
+    const { token, user } = await registerUser(srv, 'profil2');
+
+    const res = await srv.req('PUT', '/api/auth/profile', {
+      username: user.username, email: user.email,
+    }, token);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.data.user.username, user.username);
+  });
+
+  test('lehnt einen bereits vergebenen Benutzernamen ab', async () =>
+  {
+    await registerUser(srv, 'profil3');
+    const { token } = await registerUser(srv, 'profil4');
+
+    const res = await srv.req('PUT', '/api/auth/profile', {
+      username: 'userprofil3',
+    }, token);
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /Benutzername/);
+  });
+
+  test('lehnt eine unsinnige E-Mail-Adresse ab', async () =>
+  {
+    const { token } = await registerUser(srv, 'profil5');
+
+    const res = await srv.req('PUT', '/api/auth/profile', { email: 'keine-adresse' }, token);
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /E-Mail/);
+  });
+
+  test('verlangt für ein neues Passwort das aktuelle', async () =>
+  {
+    const { token } = await registerUser(srv, 'profil6');
+
+    const res = await srv.req('PUT', '/api/auth/profile', {
+      newPassword: 'nochgeheimer456',
+    }, token);
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /Aktuelles Passwort/);
+  });
+
+  test('lehnt ein zu kurzes neues Passwort ab', async () =>
+  {
+    const { token } = await registerUser(srv, 'profil7');
+
+    const res = await srv.req('PUT', '/api/auth/profile', {
+      currentPassword: 'geheim123', newPassword: '123',
+    }, token);
+
+    assert.equal(res.status, 400);
+    assert.match(res.data.error, /Neues Passwort/);
   });
 });
 

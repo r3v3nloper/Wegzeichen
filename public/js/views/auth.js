@@ -12,8 +12,7 @@ function renderAuthView()
   return `<div class="auth-wrap">
     <div class="auth-box">
       <div class="auth-logo">
-        <img src="/icons/icon.svg" alt=""
-          style="width:56px;height:56px;margin:0 auto 10px;display:block;"/>
+        <img src="/icons/icon.svg" alt=""/>
         <h1>Wegzeichen</h1>
         <p>Notizen, Wanderwege, Orte und Reisen an einem Ort</p>
       </div>
@@ -40,8 +39,7 @@ function loginFormHtml()
         placeholder="Passwort" required autocomplete="current-password"/>
     </div>
     <div class="form-error" id="login-error"></div>
-    <button type="submit" class="btn btn-primary btn-full btn-lg"
-      style="margin-top:6px">Anmelden</button>
+    <button type="submit" class="btn btn-primary btn-full btn-lg">Anmelden</button>
   </form>`;
 }
 
@@ -69,8 +67,7 @@ function registerFormHtml()
         placeholder="Passwort wiederholen" required autocomplete="new-password"/>
     </div>
     <div class="form-error" id="register-error"></div>
-    <button type="submit" class="btn btn-primary btn-full btn-lg"
-      style="margin-top:6px">Konto erstellen</button>
+    <button type="submit" class="btn btn-primary btn-full btn-lg">Konto erstellen</button>
   </form>`;
 }
 

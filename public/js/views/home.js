@@ -4,10 +4,10 @@
    ===================================================== */
 import { IC } from '../icons.js';
 import { S, homePoint, countryName, allSpots, spotView } from '../state.js';
-import { $, $$, esc, debounce, timeAgo, starsHtml, renderEmptyState } from '../dom.js';
-import { formatDate, relativeDateLabel, todayIso, isPast } from '../dates.js';
+import { $, $$, esc, debounce, starsHtml, renderEmptyState } from '../dom.js';
+import { formatDate, relativeDateLabel, todayIso, isPast, timeAgo } from '../dates.js';
 import { API } from '../api.js';
-import { navigate } from '../router.js';
+import { navigate, refresh } from '../router.js';
 import { withDistances, sortItems, formatDistance, mapsDirectionsUrl } from '../geo.js';
 import { offlineBannerHtml } from './partials.js';
 
@@ -34,7 +34,7 @@ export function renderHome()
       <input class="search-input" id="global-search" type="search"
         placeholder="Alles durchsuchen — Notizen, Wege, Orte, Reisen…"
         value="${esc(S.searchQuery)}"/>
-      <button class="search-submit" id="global-search-btn">${IC.search}</button>
+      <button class="search-submit" id="global-search-btn" aria-label="Suchen">${IC.search}</button>
     </div>
 
     <div id="search-results">${searchResultsHtml()}</div>
@@ -53,7 +53,7 @@ export function renderHome()
 
 function statCard(count, singular, plural, view)
 {
-  return `<div class="stat-card" data-nav="${view}" style="cursor:pointer">
+  return `<div class="stat-card" data-nav="${view}">
     <div class="stat-num">${count}</div>
     <div class="stat-label">${count === 1 ? singular : plural}</div>
   </div>`;
@@ -136,7 +136,7 @@ function nearbySectionHtml()
       </div>
       <div class="offline-banner">${IC.warn}
         <span>Lege im
-          <a href="#" data-nav="profile" style="text-decoration:underline">Profil</a>
+          <a href="#" data-nav="profile">Profil</a>
           einen Heimatort fest, dann erscheinen hier die nächstgelegenen Ziele.</span>
       </div>
     </div>`;
@@ -153,7 +153,7 @@ function nearbySectionHtml()
   return `<div class="section">
     <div class="section-head">
       <div class="section-title">${IC.navigate}<span>Ziele in der Nähe</span></div>
-      <span class="text-muted" style="font-size:.76rem">Luftlinie von
+      <span class="text-muted">Luftlinie von
         ${esc(home.label || 'Zuhause')}</span>
     </div>
     <div class="entry-list">${nearby.map(nearbyCardHtml).join('')}</div>
@@ -180,7 +180,8 @@ function nearbyCardHtml(spot)
     </div>
     <div class="entry-actions">
       ${navUrl ? `<a class="btn btn-ghost btn-sm" href="${esc(navUrl)}" target="_blank"
-        rel="noopener" title="Route in Google Maps">${IC.navigate}</a>` : ''}
+        rel="noopener" title="Route in Google Maps"
+        aria-label="Route in Google Maps">${IC.navigate}</a>` : ''}
     </div>
   </div>`;
 }
@@ -262,7 +263,7 @@ function searchResultsHtml()
 
   if (!groups.length)
   {
-    return `<div style="margin-bottom:24px">${renderEmptyState('🔍', 'Nichts gefunden',
+    return `<div class="search-empty">${renderEmptyState('🔍', 'Nichts gefunden',
       `Kein Eintrag enthält „${S.searchQuery}".`)}</div>`;
   }
 
@@ -321,7 +322,7 @@ function bindSearchResults()
   {
     S.searchQuery = '';
     S.searchResults = null;
-    navigate('home');
+    refresh();
   });
   bindNoteLinks($('#search-results'));
 }

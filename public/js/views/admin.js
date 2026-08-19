@@ -4,10 +4,11 @@
    ===================================================== */
 import { IC } from '../icons.js';
 import { S } from '../state.js';
-import { $, $$, esc, timeAgo, toast, toastError, renderEmptyState } from '../dom.js';
+import { $, $$, esc, toast, toastError, renderEmptyState } from '../dom.js';
+import { timeAgo } from '../dates.js';
 import { API } from '../api.js';
 import { openModal, closeModal, openConfirm } from '../modal.js';
-import { navigate } from '../router.js';
+import { refresh } from '../router.js';
 
 export function renderAdmin()
 {
@@ -49,9 +50,9 @@ function tableHtml()
             <td>
               <div class="admin-actions">
                 <button class="btn btn-ghost btn-sm" data-pw="${u.id}"
-                  title="Passwort setzen">${IC.key}</button>
+                  title="Passwort setzen" aria-label="Passwort setzen">${IC.key}</button>
                 <button class="btn btn-danger btn-sm" data-del="${u.id}"
-                  title="Konto löschen">${IC.trash}</button>
+                  title="Konto löschen" aria-label="Konto löschen">${IC.trash}</button>
               </div>
             </td>
           </tr>`).join('')}
@@ -80,10 +81,10 @@ function openPasswordModal(id)
   openModal(`
     <div class="modal-head">
       <h2>Passwort setzen</h2>
-      <button class="btn-modal-close" data-close>${IC.x}</button>
+      <button class="btn-modal-close" data-close aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
-      <p class="text-muted" style="font-size:.84rem;margin-bottom:14px">
+      <p class="text-muted modal-intro">
         Setzt ein neues Passwort für <strong>${esc(user.username)}</strong>.
         Alle Sitzungen dieses Kontos werden abgemeldet.
       </p>
@@ -141,7 +142,7 @@ function openDeleteModal(id)
       {
         await API.admin.deleteUser(id);
         toast('Konto gelöscht', 'success');
-        navigate('admin');
+        refresh();
       }
       catch (err)
       {

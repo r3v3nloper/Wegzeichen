@@ -91,10 +91,11 @@ function bindInstallPrompt()
     deferredPrompt = e;
     const banner = document.createElement('div');
     banner.className = 'install-banner';
-    banner.innerHTML = `<span style="font-size:1.4rem">🧭</span>
+    banner.innerHTML = `<span class="install-emoji">🧭</span>
       <p>Wegzeichen als App installieren — dann läuft sie auch offline.</p>
       <button class="btn btn-primary btn-sm" id="btn-pwa-install">Installieren</button>
-      <button class="btn btn-icon" id="btn-pwa-dismiss">${IC.x}</button>`;
+      <button class="btn btn-icon" id="btn-pwa-dismiss"
+        aria-label="Hinweis ausblenden" title="Ausblenden">${IC.x}</button>`;
     document.body.appendChild(banner);
 
     banner.querySelector('#btn-pwa-install')?.addEventListener('click', async () =>

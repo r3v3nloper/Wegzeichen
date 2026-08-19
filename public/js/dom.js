@@ -25,32 +25,6 @@ export function esc(str)
     .replace(/'/g, '&#39;');
 }
 
-export function timeAgo(dateStr)
-{
-  if (!dateStr)
-  {
-    return '';
-  }
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-  if (diff < 60)
-  {
-    return 'Gerade eben';
-  }
-  if (diff < 3600)
-  {
-    return `vor ${Math.floor(diff / 60)} Min.`;
-  }
-  if (diff < 86400)
-  {
-    return `vor ${Math.floor(diff / 3600)} Std.`;
-  }
-  if (diff < 604800)
-  {
-    return `vor ${Math.floor(diff / 86400)} Tagen`;
-  }
-  return new Date(dateStr).toLocaleDateString('de-DE');
-}
-
 /* Zählwort mit passender Form — deutsche Plurale sind zu unregelmäßig, um sie
    mit einem angehängten „n" zu erschlagen ("1 Notiz" vs. "2 Notizen") */
 export function plural(count, singular, pluralForm)
@@ -137,7 +111,8 @@ export function starPickerHtml(name, value)
   return `<div class="stars star-picker" data-star-picker="${name}">
     ${buttons}
     <button type="button" class="btn-star-clear" data-star="0"
-      title="Bewertung entfernen">${IC.x}</button>
+      title="Bewertung entfernen"
+      aria-label="Bewertung entfernen">${IC.x}</button>
     <input type="hidden" name="${name}" value="${value || ''}"/>
   </div>`;
 }
@@ -172,18 +147,6 @@ export function renderEmptyState(emoji, title, msg, btnHtml = '')
     ${msg ? `<p>${esc(msg)}</p>` : ''}
     ${btnHtml}
   </div>`;
-}
-
-export function bindStatusTabs(selector, dataKey, onChange)
-{
-  $$(selector).forEach(t =>
-  {
-    t.addEventListener('click', () =>
-    {
-      $$(selector).forEach(x => x.classList.toggle('active', x === t));
-      onChange(t.dataset[dataKey]);
-    });
-  });
 }
 
 export function toast(msg, type = 'info', title = '')

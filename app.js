@@ -48,8 +48,12 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      // 'unsafe-inline' ist nötig, weil das SPA-Markup Inline-style-Attribute nutzt
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      /* Ohne 'unsafe-inline': das Markup nutzt keine style-Attribute mehr,
+         sondern Klassen aus style.css. Das ist die Schranke, die eine Lücke im
+         Säubern von gerendertem Markdown erst schwer ausnutzbar macht — ein
+         eingeschmuggeltes style-Attribut bliebe wirkungslos. Zuweisungen über
+         element.style aus JavaScript sind davon nicht betroffen. */
+      styleSrc: ["'self'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       // https: nötig für OpenStreetMap-Kartentiles; data: für Inline-Grafiken
       imgSrc: ["'self'", 'data:', 'https:'],

@@ -34,7 +34,7 @@ export function openLocationPicker({ title = 'Standort wählen', initial, onPick
   openModal(`
     <div class="modal-head">
       <h2>${esc(title)}</h2>
-      <button class="btn-modal-close" id="lp-close">${IC.x}</button>
+      <button class="btn-modal-close" id="lp-close" aria-label="Schließen" title="Schließen">${IC.x}</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -42,7 +42,8 @@ export function openLocationPicker({ title = 'Standort wählen', initial, onPick
         <div class="lp-search">
           <input class="form-input" id="lp-query" type="search"
             placeholder="z.B. Eifel Nationalpark" autocomplete="off"/>
-          <button class="btn btn-ghost" id="lp-locate" title="Aktuelle Position verwenden">
+          <button class="btn btn-ghost" id="lp-locate" title="Aktuelle Position verwenden"
+            aria-label="Aktuelle Position verwenden">
             ${IC.crosshair}
           </button>
         </div>

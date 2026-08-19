@@ -12,14 +12,15 @@ und wörtlich „Weg" + „Zeichen", die beiden Kernmodule der App.
 - **Notizen in Markdown** mit Leseansicht, Editor samt Werkzeugleiste und Vorschau,
   Volltextsuche, Favoriten immer oben und kleinen Anhängen
   (PDF, Word, ODT, Text, Markdown, Bilder — max. 10 MB je Datei)
-- **Wanderwege** mit Länge, Höhenmetern, Dauer, Schwierigkeit und Quelle
+- **Wanderwege** mit Länge, Höhenmetern, Dauer, Schwierigkeit, Quelle und Notizen in Markdown
 - **Orte** wie Hotels, Wälder, Aussichtspunkte oder Stände, gruppiert nach Land
 - **Wunschliste und Besuchtes** in einem Feld: „Möchte ich hin" oder
   „War ich schon" mit Sterne-Bewertung und Besuchsdatum
 - **Entfernung** als Luftlinie zu einem hinterlegten Heimatort, plus Deep-Link,
   der die Navigation direkt in Google Maps öffnet
-- **Reiseblog** mit Zeitraum, berechneter Dauer, Bewertung und Etappenroute
-  („Tag 1–4 Rom, Tag 5–8 Florenz"); Bilder bleiben als Cloud-Link außerhalb
+- **Reiseblog** mit Zeitraum, berechneter Dauer, Bewertung, Etappenroute
+  („Tag 1–4 Rom, Tag 5–8 Florenz") und einem Reisebericht in Markdown;
+  Bilder bleiben als Cloud-Link außerhalb
 - **Karte** für Orte und Wanderwege mit OpenStreetMap
 - **Mehrbenutzerbetrieb** mit strikt getrennten Daten
 

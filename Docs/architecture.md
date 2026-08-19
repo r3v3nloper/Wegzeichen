@@ -13,10 +13,12 @@ Browser (PWA, ES-Module)
   │                           GET /api → network-first + Cache-Rückfall
   ▼
 Express (app.js)
-  ├─ middleware/   auth (JWT), admin, upload (multer)
+  ├─ middleware/   auth (JWT), admin, owned (Besitz + 404), upload (multer)
   ├─ routes/       auth, users, admin, meta, notes(+attachments), noteFolders,
   │                spots, trips, search, geo
   ├─ utils/        validate, ownership, countries, attachments, nominatim
+  ├─ db.js         Verbindung und Startreihenfolge
+  ├─ db/           schema, migrations (nummeriert), seed
   ▼
 better-sqlite3 (synchron)  +  DATA_DIR/attachments/
 ```
@@ -151,12 +153,30 @@ Entfernungen werden im Browser gerechnet. Beides hat damit genau eine Quelle.
 ### Datumsrechnung
 
 `public/js/dates.js` bündelt sie, wie `geo.js` frei von DOM und State und
-entsprechend direkt getestet. Alle Daten sind reine Kalendertage
-(`JJJJ-MM-TT`) und werden als Zeichenketten beziehungsweise über
-UTC-Mitternacht verglichen. Der Grund ist eine Klasse von Fehlern, die sonst
-schwer zu finden ist: `new Date('2026-01-01')` liegt westlich von Greenwich auf
-dem 31.12., und `toISOString()` liefert abends im Sommer bereits den Folgetag —
-„heute" wäre dann falsch einsortiert.
+entsprechend direkt getestet. Dort liegen zwei Sorten, die nicht vermischt werden
+dürfen.
+
+**Kalendertage** (`JJJJ-MM-TT`) — Besuchsdatum, geplanter Termin, Reisedaten.
+Sie werden als Zeichenketten beziehungsweise über UTC-Mitternacht verglichen. Der
+Grund ist eine Klasse von Fehlern, die sonst schwer zu finden ist:
+`new Date('2026-01-01')` liegt westlich von Greenwich auf dem 31.12., und
+`toISOString()` liefert abends im Sommer bereits den Folgetag — „heute" wäre
+dann falsch einsortiert.
+
+**Zeitpunkte** (`created_at`, `updated_at`) — echte Momente, für die `Date` das
+richtige Werkzeug ist. Sie kommen aus SQLite und tragen die Form
+`JJJJ-MM-TT HH:MM:SS`: UTC, aber ohne Kennzeichen. Genau darin lag ein Fehler,
+der lange unbemerkt blieb, weil er in UTC nicht auftritt — `new Date()` liest so
+eine Zeichenkette nach ECMAScript als *lokale* Zeit, und eine gerade gespeicherte
+Notiz war in Berlin damit sofort „vor 2 Std." alt. `parseTimestamp()` ergänzt die
+Zone vor dem Parsen; Zeichenketten, die schon eine tragen, bleiben unberührt.
+
+Deshalb liegt auch `timeAgo()` hier und nicht mehr in `dom.js`: es rechnet mit
+Daten, ist ohne DOM prüfbar, und sein Rückfall auf ein Datum schreibt zweistellig
+wie `formatDate()` statt über `toLocaleDateString`. Die Tests in
+`tests/public/dates.test.js` laufen bewusst zeitzonenunabhängig — sie bauen den
+Zeitstempel aus dem aktuellen Moment und bestehen unter Berlin, Los Angeles,
+Tokio und Kiritimati gleichermaßen.
 
 ## Zugriffstrennung
 
@@ -178,6 +198,29 @@ Fehler-Middleware in `app.js` übersetzt sie zu einem 400 mit deutscher Meldung,
 alles andere zu einem generischen 500. Dadurch bleiben die Routen flach und die
 Fehlertexte an einer Stelle. Zusätzlich sichern `CHECK`-Constraints in der
 Datenbank `kind`, `status` und die Bewertungsspanne ab.
+
+### Anmeldedaten
+
+Benutzername, E-Mail und Passwort werden ebenfalls in `utils/validate.js`
+geprüft (`username()`, `email()`, `password()`) und nicht in der Route. Vorher
+standen die Grenzen zweimal im Code — bei der Registrierung und bei der
+Profiländerung — mit unterschiedlichem Wortlaut in den Meldungen.
+
+Zwei Feinheiten stecken dort:
+
+- `email()` gibt die Adresse in Kleinschreibung zurück. Sie ist der
+  Anmeldeschlüssel und muss überall in derselben Form gespeichert und verglichen
+  werden, sonst hängt die Anmeldung davon ab, wie jemand tippt.
+- `password()` trimmt **nicht**. Ein getrimmtes Passwort wäre ein anderes als
+  das eingegebene; der Nutzer käme beim nächsten Anmelden nicht mehr herein.
+  Deshalb prüft es auch nicht über `isBlank`, das Whitespace als leer wertet.
+
+Die Anmeldung selbst prüft das Adressformat absichtlich nicht: sie soll bei
+falschen Daten immer gleich antworten. Bei einer Profiländerung landen nur
+tatsächlich geänderte Werte im `UPDATE` — das Formular schickt immer alle Felder
+mit, und ein unveränderter Benutzername würde am UNIQUE-Index scheitern. Welche
+Spalten überhaupt geschrieben werden dürfen, sagt `PROFILE_COLUMNS`; das
+Statement wird über diese Liste gebaut, nie über die Schlüssel des Requests.
 
 Länder sind ISO-3166-Codes. Codes *und* deutsche Namen kommen aus
 `Intl.DisplayNames` statt aus einer gepflegten Tabelle; `utils/countries.js`
@@ -201,6 +244,94 @@ blendet Zusammenschlüsse wie `EU` aus. Der Client holt die Liste über
 - `CASCADE` räumt beim Löschen einer Notiz oder eines Kontos nur die
   Datenbankzeilen; die Dateien entfernen `routes/notes.js` und `routes/admin.js`
   ausdrücklich.
+
+## Markdown auch außerhalb der Notizen
+
+Die Notizen eines Ortes (5.000 Zeichen) und der Reisebericht (20.000 Zeichen)
+nutzen denselben Editor wie eine Notiz — Werkzeugleiste, Tastenkürzel und
+Vorschau kommen unverändert aus `markdown-editor.js`.
+
+Gerendert wird, wo es eine Leseansicht gibt: der Reisebericht im Detaildialog
+einer Reise. Ein Ziel hat keinen Detaildialog — ein Klick auf die Karte öffnet
+dort das Formular —, deshalb ist die Vorschau im Editor die einzige Stelle, an
+der seine Notizen gerendert erscheinen. Wer das ändern will, braucht für Ziele
+eine Leseansicht wie `views/note.js`; das ist eine Funktion, kein Umbau.
+
+In den Listenauszügen steht in beiden Fällen Text ohne Syntax
+(`markdownToPlainText`). Die Suche in `views/spots/filters.js` arbeitet weiter
+auf dem Rohtext — wer „Parkplatz" sucht, findet ihn auch in einer Aufzählung.
+
+## Stile ohne 'unsafe-inline'
+
+Das Markup nutzt keine `style`-Attribute, sondern Klassen aus `style.css`.
+Dadurch kommt die CSP ohne `style-src 'unsafe-inline'` aus — und genau das ist
+die Schranke, die eine Lücke im Säubern von gerendertem Markdown erst schwer
+ausnutzbar macht: ein eingeschmuggeltes `style`-Attribut bliebe wirkungslos.
+
+Zuweisungen über `element.style` aus JavaScript sind davon nicht betroffen; die
+CSP verbietet Inline-Stile im Markup, nicht das CSSOM. Der `z-index` einer
+Modal-Ebene entsteht deshalb weiter dort, ebenso Leaflets Kartenpositionierung
+und das Ausblenden eines Toasts.
+
+Ersetzt wurden 46 Attribute durch wenige benannte Klassen: vier Hilfsklassen für
+wiederkehrende Layoutfälle (`u-grow`, `u-shrink`, `u-full`, `u-inline-row`),
+`is-hidden` für umgeschaltete Sichtbarkeit — die vorher als
+`style="display:none"` im Markup *und* als `style.display` im Code stand und
+jetzt an beiden Stellen dieselbe Klasse ist — und für den Rest Klassen am
+jeweiligen Baustein. `tests/routes/headers.test.js` prüft die Kopfzeile,
+`tests/public/accessibility.test.js` schlägt fehl, sobald ein `style`-Attribut
+ins Markup zurückkommt.
+
+## Nutzerverwaltung
+
+Zwei Eingriffe mit großer Wirkung: ein Konto löschen und ein Passwort setzen.
+Beide gehen durch `loadTargetUser()` in `routes/admin.js`, das die gemeinsamen
+Grenzen an einer Stelle zieht:
+
+- Das **eigene** Konto ist hier nicht das Ziel. Gelöscht wird es gar nicht, und
+  das eigene Passwort ändert man über das Profil — dort ist das aktuelle
+  Passwort Pflicht, hier wäre es keins.
+- Das Konto eines **anderen Admins** ist tabu. Beim Löschen galt das immer, beim
+  Passwort fehlte die Grenze: über eine geratene ID ließ sich ein zweiter Admin
+  aussperren, obwohl die Nutzerliste Administratoren gar nicht anzeigt.
+- Ein gesetztes Passwort erhöht `token_version` und wirft damit alle Sitzungen
+  des Nutzers weg — sonst bliebe ein bereits angemeldetes Gerät drin.
+
+`GET /api/admin/users` listet nur Konten mit `is_admin = 0` und liefert Zahlen
+statt Inhalte. Ein Admin sieht also nie Notizen, Ziele oder Reisen anderer.
+
+`tests/routes/admin.test.js` deckt beide Eingriffe ab, inklusive der Zusage, dass
+mit dem Konto auch die Anhangsdateien von der Platte verschwinden. Den Admin für
+diese Tests legt `registerAdmin()` in `tests/helpers/setup.js` über die Datenbank
+an: einen Weg, sich selbst zum Admin zu machen, gibt es in der API bewusst nicht.
+
+## Datenbankstart
+
+`db.js` ist die Verbindung und die Reihenfolge, nichts weiter: öffnen, Schema,
+Migrationen, Admin-Seed. Die drei Schritte liegen in `db/`:
+
+| Datei | Aufgabe |
+|---|---|
+| `db/schema.js` | Tabellen und Indizes im heutigen Stand, idempotent |
+| `db/migrations.js` | nummerierte Schritte für bestehende Datenbanken |
+| `db/seed.js` | Admin nur, wenn `ADMIN_PASSWORD` gesetzt ist |
+
+Der Stand steht in `PRAGMA user_version`; erledigte Schritte werden beim nächsten
+Start übersprungen statt jedes Mal alle Spalten abzuklopfen. Jeder Schritt bleibt
+trotzdem für sich idempotent — bestehende Datenbanken tragen `user_version = 0`,
+obwohl ihr Schema schon vollständig sein kann. Erst nach dem ersten Durchlauf ist
+die Zählung verlässlich.
+
+Die Reihenfolge innerhalb der Liste zählt, und zwar aus zwei Gründen: der
+Neuaufbau von `spots` kennt nur die Spalten von damals und würde eine vorher
+ergänzte wieder verwerfen, und ein Index auf eine nachgerüstete Spalte scheitert,
+wenn er vor dem `ALTER TABLE` läuft. Ein veröffentlichter Schritt behält deshalb
+seine Nummer; neue kommen ans Ende.
+
+Geprüft wird das zweifach: `tests/migration.test.js` startet die echte App gegen
+eine Datenbank im alten Schema, `tests/db/migrations.test.js` prüft Schema,
+Versionszählung und Seed einzeln gegen eine Datenbank im Speicher — das ist erst
+möglich, seit die Schritte reine Funktionen über einem Handle sind.
 
 ## Karten, Entfernung, Geocoding
 
@@ -257,10 +388,11 @@ Vanilla-ES-Module ohne Buildkette, aus AniGa übernommenes Muster:
 | `main.js` | Boot, globale Klick-Delegation, Logout, PWA-Install |
 | `state.js` | Zentraler State, `homePoint()`, `countryName()` |
 | `api.js` | Alle HTTP-Aufrufe, Offline-Erkennung, Cache-Leerung |
-| `router.js` | View-Wechsel und Datenladen pro View |
+| `router.js` | View-Wechsel (`navigate`) und Neuzeichnen ohne Spinner (`refresh`) |
 | `shell.js` | Sidebar, Mobile-Header, Bottom-Navigation |
 | `dom.js` | `$`, `esc`, Formatierung, Toast, Sterne, Zählwörter |
 | `geo.js` | Haversine, Formatierung, Maps-Links, Gruppieren, Sortieren — reine Funktionen |
+| `dates.js` | Kalendertage und Zeitpunkte, `parseTimestamp()`, `timeAgo()` — reine Funktionen |
 | `map.js` | Leaflet-Wrapper: Markerkarte und Punktauswahl |
 | `markdown.js` | Notiztext zu gesäubertem HTML, Notiztext zu reinem Text |
 | `markdown-input.js` | Textumformungen der Werkzeugleiste — reine Funktionen |
@@ -269,7 +401,30 @@ Vanilla-ES-Module ohne Buildkette, aus AniGa übernommenes Muster:
 | `views/entryActions.js` | Knöpfe und Verhalten einer Eintragskarte: öffnen, bearbeiten, Favorit, löschen |
 | `modal.js` | Modal-**Stapel** und Bestätigungsdialog |
 | `views/` | Eine Datei je Bereich, plus `partials.js` und `entryActions.js`; `note.js` liest eine Notiz |
+| `views/spots/` | Teile der Ziel-Ansicht: `meta.js`, `filters.js`, `card.js` |
 | `modals/` | Formulare für Notiz, Ort/Weg, Reise und Standortauswahl |
+
+### Wechseln und Neuzeichnen sind zwei Dinge
+
+`router.js` trennt Laden (`loadView`) und Zeichnen (`paintView`). Darauf sitzen
+zwei Einstiegspunkte:
+
+- `navigate(view)` wechselt die Ansicht: Ladeindikator, Daten holen, zeichnen.
+- `refresh()` bleibt in der Ansicht: Daten holen, zeichnen. Kein Spinner.
+
+Der Unterschied ist keine Kosmetik. Vorher rief jede Änderung an einem Eintrag
+`navigate()`: ein Klick auf den Stern ersetzte die Liste erst durch einen
+Spinner, wodurch der Inhalt auf die Höhe des Indikators zusammenfiel und die
+Scrollposition verloren war. Wer in einer langen Liste weit unten einen Favoriten
+setzte, landete wieder oben. Mit `refresh()` bleibt das Markup stehen, bis das
+neue fertig ist.
+
+Die Sortierung bleibt dabei beim Server. Sie lokal nachzubilden — Favoriten oben,
+dann nach Änderungsdatum — hätte die Reihenfolge an zwei Stellen definiert; ein
+Eintrag, der zum Favoriten wird, wandert deshalb weiterhin über die Serverantwort
+nach oben. `views/spots.js` behält zusätzlich sein eigenes `rerender(kind)`: dort
+arbeiten Filter, Sortierung und Kartenansicht ohnehin auf der vollständig
+geladenen Liste und brauchen den Server nicht.
 
 ### Modals als Stapel
 
@@ -279,9 +434,43 @@ Würde er das darunterliegende Modal ersetzen, wären alle Eingaben verloren.
 Jede Ebene bekommt einen höheren `z-index`, `closeModal()` schließt nur die
 oberste, und der Picker begrenzt seine Selektoren auf sein eigenes Overlay.
 
+Jede Ebene ist zugleich ein echter Dialog:
+
+- `role="dialog"` mit `aria-modal="true"`, benannt über die eigene Überschrift.
+  Ohne `aria-labelledby` sagt ein Screenreader beim Öffnen nur „Dialog".
+- Der Fokus wandert in das erste Eingabefeld — bewusst nicht auf einen Knopf, im
+  Bestätigungsdialog wäre das „Löschen". Gibt es kein Feld, bekommt der Dialog
+  selbst den Fokus (`tabindex="-1"`) und sein Titel wird vorgelesen.
+- Der Tabulator bleibt in der obersten Ebene. Ohne diese Falle läuft der Fokus
+  hinter dem Overlay durch die Seite, während der Dialog offen ist — sichtbar
+  ist er dann nirgends.
+- Beim Schließen kehrt der Fokus zum auslösenden Element zurück. Ist das
+  verschwunden, weil die Ansicht nach dem Speichern neu gezeichnet wurde,
+  übernimmt die Ebene darunter.
+
+Escape und Tab hängen an *einem* Listener auf `document`, der immer die oberste
+Ebene des Stapels bedient.
+
+### Namen für Icon-Bedienelemente
+
+Ein Knopf, der nur ein Icon zeigt, wird ohne Namen als „Schaltfläche"
+vorgelesen. `title` genügt dafür nicht — er ist ein Tooltip für die Maus und
+wird je nach Programm gar nicht ausgegeben. Alle Icon-Knöpfe tragen deshalb
+zusätzlich ein `aria-label`.
+
+`tests/public/accessibility.test.js` hält das offen: der Test liest den
+Quelltext und verlangt, dass jedes Bedienelement mit `title` auch ein
+`aria-label` hat. Ein DOM steht dort nicht zur Verfügung, weil die Knöpfe in
+Template-Zeichenketten entstehen — dieselbe Linie wie bei `sw.test.js`.
+
 ### Eine View für zwei Bereiche
 
 `views/spots.js` bedient Wanderwege *und* Orte, parametrisiert über `kind`.
+Die Datei ist der Rahmen; die Teile liegen daneben in `views/spots/`:
+`meta.js` (was die Arten unterscheidet, Sortierwahl), `filters.js` (Filterleiste
+und Ableitung der sichtbaren Liste) und `card.js` (Eintragskarte mit ihren
+Kennzahl-Chips). `filters.js` bekommt `rerender` als Parameter herein, statt es
+zu importieren — sonst hingen Rahmen und Teil gegenseitig aneinander.
 Filter, Sortierung, Länder-Gruppierung, Kartenansicht und Entfernungsanzeige sind
 identisch; unterschiedlich sind nur die angezeigten Kennzahlen. Die Filter
 arbeiten im Browser auf der vollständig geladenen Liste — das wirkt sofort und
@@ -310,7 +499,19 @@ Eine Falle steckt in `ALLOWED_URI_REGEXP`: DOMPurify prüft mit diesem Ausdruck
 verwirft deshalb auch `target="_blank"` und `type="checkbox"` — die Verweise
 öffnen dann nicht mehr in einem neuen Tab und Aufgabenlisten verlieren ihre
 Kästchen. Der Ausdruck lässt schemalose Werte darum ausdrücklich durch.
-`tests/public/markdown.test.js` deckt beide Richtungen ab.
+
+Geprüft wird das an der echten Funktion: `tests/public/markdown.test.js` baut mit
+**jsdom** ein Dokument, bevor es `markdown.js` lädt — DOMPurify bindet beim Laden
+das globale `window` und wäre ohne eines abgeschaltet. Der Test verlangt beide
+Richtungen: Skript, Event-Attribute, `javascript:`, `iframe`, `form` und
+`style` verschwinden, während Überschriften, Tabellen, Zitate, relative Ziele,
+`mailto:`, `target="_blank"` und die Kästchen der Aufgabenlisten erhalten
+bleiben. Vorher stand dort nur eine Prüfung der Konfiguration im Quelltext, die
+eine kaputte Säuberung nicht bemerkt hätte.
+
+Zwei Grenzen sind dabei bewusst festgehalten: `ftp:`, `vbscript:` und `xmpp:`
+verlieren ihr Ziel, ein Bild als `data:`-URL darf dagegen bleiben — ein Bild
+führt keinen Code aus, und die CSP lässt `data:` für Bilder ohnehin zu.
 
 Aufgeteilt ist die Umsetzung nach Zuständigkeit, nicht nach Ansicht:
 

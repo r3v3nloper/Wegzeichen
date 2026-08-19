@@ -8,14 +8,15 @@
 import { IC } from '../icons.js';
 import { S } from '../state.js';
 import { API } from '../api.js';
-import { esc, timeAgo, plural } from '../dom.js';
+import { esc, plural } from '../dom.js';
+import { timeAgo } from '../dates.js';
 import { openNoteModal } from '../modals/note.js';
 import { renderMarkdown } from '../markdown.js';
 import { attachmentListHtml, bindAttachmentOpeners } from '../attachments.js';
 import {
   favButtonHtml, editButtonHtml, deleteButtonHtml, bindEntryActions, deletionBodyHtml,
 } from './entryActions.js';
-import { navigate } from '../router.js';
+import { navigate, refresh } from '../router.js';
 import { offlineBannerHtml } from './partials.js';
 
 export function renderNote()
@@ -89,7 +90,7 @@ export function bindNote()
 
   bindEntryActions({
     itemById: () => note,
-    edit: () => openNoteModal(note, () => navigate('note')),
+    edit: () => openNoteModal(note, refresh),
     setFavorite: API.notes.setFavorite,
     remove: API.notes.remove,
     describeDeletion: () => ({
@@ -99,7 +100,7 @@ export function bindNote()
     }),
     deletedMessage: 'Notiz gelöscht',
     // Der Stern lädt die Leseansicht neu; nach dem Löschen gibt es sie nicht mehr
-    onDone: () => navigate('note'),
+    onDone: refresh,
     onRemoved: () =>
     {
       S.openNoteId = null;

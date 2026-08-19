@@ -30,7 +30,7 @@ export function renderProfile()
          Die Entfernung ist die Luftlinie und wird auf dem Gerät berechnet.</p>
       <div class="setting-value">
         <div class="setting-current" id="home-current">${homeSummaryHtml(home)}</div>
-        <div style="display:flex;gap:6px">
+        <div class="setting-actions">
           ${home ? `<button class="btn btn-ghost btn-sm" id="btn-home-clear">
             ${IC.trash}<span>Entfernen</span></button>` : ''}
           <button class="btn btn-secondary btn-sm" id="btn-home-edit">

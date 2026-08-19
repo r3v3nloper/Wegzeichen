@@ -40,7 +40,8 @@ function toolbarHtml()
   return TOOLBAR.map(key => key === null
     ? '<span class="md-tool-sep"></span>'
     : `<button type="button" class="md-tool" data-md="${key}"
-        title="${ACTIONS[key].title}">${ACTIONS[key].icon}</button>`).join('');
+        title="${ACTIONS[key].title}"
+        aria-label="${ACTIONS[key].title}">${ACTIONS[key].icon}</button>`).join('');
 }
 
 /* `name` ist der Feldname im umgebenden Formular — das Textfeld bleibt ein

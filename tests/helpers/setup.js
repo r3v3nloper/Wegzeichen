@@ -100,4 +100,21 @@ async function registerUser(srv, suffix)
   return { token: res.data.token, user: res.data.user, status: res.status };
 }
 
-module.exports = { startTestServer, registerUser };
+/* Legt einen Nutzer an und macht ihn zum Administrator.
+
+   Über die Datenbank statt über die App: `db.js` sät einen Admin nur, wenn
+   ADMIN_PASSWORD gesetzt ist — und genau das löscht dieses Setup oben, damit
+   Tests nicht von der Umgebung des Entwicklers abhängen. Einen Weg, sich selbst
+   zum Admin zu machen, gibt es in der API bewusst nicht.
+
+   `middleware/admin.js` liest `is_admin` bei jeder Anfrage frisch, der Token
+   aus der Registrierung bleibt also gültig. */
+async function registerAdmin(srv, suffix)
+{
+  const admin = await registerUser(srv, suffix);
+  const db = require('../../db');
+  db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(admin.user.id);
+  return admin;
+}
+
+module.exports = { startTestServer, registerUser, registerAdmin };

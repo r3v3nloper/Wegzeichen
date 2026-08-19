@@ -55,7 +55,7 @@ export function renderShell()
           <div class="user-name">${esc(u.username || '')}</div>
           <div class="user-email">${esc(u.email || '')}</div>
         </div>
-        <button class="btn-logout" id="btn-logout" title="Abmelden">${IC.logout}</button>
+        <button class="btn-logout" id="btn-logout" title="Abmelden" aria-label="Abmelden">${IC.logout}</button>
       </div>
     </aside>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -65,7 +65,7 @@ export function renderShell()
         <img src="/icons/icon.svg" class="logo-img logo-img-sm" alt=""/>
         <span class="logo-text">Wegzeichen</span>
       </div>
-      <div style="width:34px"></div>
+      <div class="mobile-header-spacer"></div>
     </header>
     <main class="main-content" id="main-content"></main>
     <nav class="bottom-nav">

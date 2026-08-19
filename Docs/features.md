@@ -11,8 +11,14 @@ Passwortänderung meldet alle anderen Geräte ab, das aktuelle bleibt angemeldet
 
 Ein Administrator sieht unter „Admin" alle Konten mit der Anzahl ihrer Einträge,
 kann Passwörter setzen und Konten löschen. Das Löschen entfernt auch alle Notizen,
-Orte, Wanderwege, Reisen und Anhänge des Kontos. Ein Admin entsteht über die
-Umgebungsvariablen `ADMIN_EMAIL` und `ADMIN_PASSWORD` beim ersten Start.
+Orte, Wanderwege, Reisen und Anhänge des Kontos. Ein gesetztes Passwort meldet
+alle Geräte des betroffenen Nutzers ab.
+
+Zwei Grenzen gelten dabei: das eigene Konto ist über die Nutzerverwaltung nicht
+änderbar (Passwort ändern geht im Profil), und das Konto eines anderen
+Administrators ist es auch nicht — weder löschen noch Passwort setzen. Ein Admin
+entsteht über die Umgebungsvariablen `ADMIN_EMAIL` und `ADMIN_PASSWORD` beim
+ersten Start.
 
 ## Heimatort
 
@@ -78,6 +84,9 @@ muss gesetzt bleiben, und beide lassen sich nachträglich ändern.
 Gemeinsam:
 
 - Name, Notizen, Land, Region oder Stadt, Adresse
+- Die **Notizen sind Markdown** und werden im selben Editor geschrieben wie eine
+  Notiz: Werkzeugleiste, Tastenkürzel und Vorschau. In der Liste erscheint der
+  Text ohne Markdown-Zeichen.
 - Standort per Adresssuche, Kartenklick, GPS oder gar nicht
 - **Status**: „Möchte ich hin" oder „War ich schon"
 - Bei „War ich schon": Bewertung von 1 bis 5 Sternen und Besuchsdatum
@@ -129,6 +138,9 @@ viele Einträge keinen Punkt haben.
 Ein privater Reiseblog ohne Bilder.
 
 - Titel, Land, Zeitraum, Bewertung von 1 bis 5 Sternen, Reisebericht
+- Der **Reisebericht ist Markdown** und wird im selben Editor geschrieben wie eine
+  Notiz. Gerendert erscheint er beim Öffnen der Reise; in der Liste steht der Text
+  ohne Markdown-Zeichen.
 - **Dauer** wird aus dem Zeitraum berechnet, beide Tage zählen mit
 - **Bilder** als Link auf ein Cloud-Album statt als Upload
 - Favorit
@@ -172,6 +184,16 @@ Die App ist als PWA auf Android und Windows installierbar.
 | Speichern ohne Netz | Wird abgelehnt, mit dem Hinweis dass nichts gespeichert wurde |
 | Kartenhintergrund | Fehlt — OpenStreetMap erlaubt kein Vorab-Caching der Tiles. Koordinaten, Entfernung und Maps-Link funktionieren |
 | Kontowechsel | Der Zwischenspeicher wird geleert, damit niemand die Daten des vorigen Kontos sieht |
+
+## Bedienung mit der Tastatur
+
+Dialoge sind vollständig mit der Tastatur bedienbar: der Fokus springt beim
+Öffnen ins erste Feld, bleibt mit Tab im Dialog, Escape schließt ihn — und
+danach steht der Fokus wieder auf dem Knopf, der ihn geöffnet hat. Im
+Notiz-Editor arbeiten Strg+B, Strg+I und Strg+K.
+
+Icon-Knöpfe haben einen vorlesbaren Namen, und das Aufziehen mit zwei Fingern ist
+nicht gesperrt.
 
 ## Sprache und Darstellung
 
